@@ -5,64 +5,69 @@ const cfg = window.NOVA_CONFIG || {};
 
 const configured =
   cfg.SUPABASE_URL &&
-  !cfg.SUPABASE_URL.includes('YOUR_') &&
+  !cfg.SUPABASE_URL.includes("YOUR_") &&
   cfg.SUPABASE_ANON_KEY &&
-  !cfg.SUPABASE_ANON_KEY.includes('YOUR_');
+  !cfg.SUPABASE_ANON_KEY.includes("YOUR_");
 
 const sb = configured
   ? supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY)
   : null;
 
-const app = document.getElementById('app');
+const app = document.getElementById("app");
 
-window.addEventListener('error', e => {
-  console.error('NOVA runtime error:', e.error || e.message);
+window.addEventListener("error", (e) => {
+  console.error("NOVA runtime error:", e.error || e.message);
 });
 
-window.addEventListener('unhandledrejection', e => {
-  console.error('NOVA promise error:', e.reason);
+window.addEventListener("unhandledrejection", (e) => {
+  console.error("NOVA promise error:", e.reason);
 });
 
 let products = [];
 let categories = [];
 
 let settings = {
-  store_name: 'NOVA',
-  whatsapp: '',
-  admin_email: '',
+  store_name: "NOVA",
+  whatsapp: "",
+  admin_email: "",
   delivery_fee: 200
 };
 
 let cart = JSON.parse(
-  localStorage.getItem('nova_cart_v2') || '[]'
+  localStorage.getItem("nova_cart_v2") || "[]"
 );
 
-let atab = 'dashboard';
+let atab = "dashboard";
 
-const money = n =>
-  'Rs. ' + Number(n || 0).toLocaleString('en-PK');
 
-const esc = s =>
-  String(s ?? '').replace(
+/* =========================
+   HELPERS
+========================= */
+
+const money = (n) =>
+  "Rs. " + Number(n || 0).toLocaleString("en-PK");
+
+const esc = (s) =>
+  String(s ?? "").replace(
     /[&<>"']/g,
-    m => ({
-      '&': '&amp;',
-      '<': '&lt;',
-      '>': '&gt;',
-      '"': '&quot;',
-      "'": '&#039;'
+    (m) => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#039;"
     }[m])
   );
 
 const saveCart = () =>
   localStorage.setItem(
-    'nova_cart_v2',
+    "nova_cart_v2",
     JSON.stringify(cart)
   );
 
 
 /* =========================
-   AUTH / PROFILE
+   AUTH
 ========================= */
 
 async function user() {
@@ -73,15 +78,16 @@ async function user() {
   return data.user || null;
 }
 
+
 async function profile() {
   const u = await user();
 
   if (!u) return null;
 
   const { data } = await sb
-    .from('profiles')
-    .select('*')
-    .eq('id', u.id)
+    .from("profiles")
+    .select("*")
+    .eq("id", u.id)
     .maybeSingle();
 
   return data;
@@ -89,34 +95,38 @@ async function profile() {
 
 
 /* =========================
-   INITIAL LOAD
+   LOAD DATABASE
 ========================= */
 
 async function loadBase() {
+
   if (!sb) {
     configScreen();
     return;
   }
 
   const [p, c, s] = await Promise.all([
-    sb
-      .from('products')
-      .select('*,categories(name)')
-      .order('created_at', { ascending: false }),
 
     sb
-      .from('categories')
-      .select('*')
-      .order('name'),
+      .from("products")
+      .select("*,categories(name)")
+      .order("created_at", { ascending: false }),
 
     sb
-      .from('store_settings')
-      .select('*')
-      .eq('id', true)
+      .from("categories")
+      .select("*")
+      .order("name"),
+
+    sb
+      .from("store_settings")
+      .select("*")
+      .eq("id", true)
       .single()
+
   ]);
 
   if (p.error || c.error || s.error) {
+
     app.innerHTML = `
       <main class="container" style="padding:40px">
         <h2>Supabase error</h2>
@@ -141,9 +151,15 @@ async function loadBase() {
 }
 
 
+/* =========================
+   CONFIG SCREEN
+========================= */
+
 function configScreen() {
+
   app.innerHTML = `
     <main class="container" style="padding:40px">
+
       <h1>NOVA Phase 2</h1>
 
       <p>
@@ -156,13 +172,14 @@ function configScreen() {
         color:#fff;
         padding:18px;
         border-radius:12px;
-        overflow:auto
+        overflow:auto;
       ">window.NOVA_CONFIG={
   SUPABASE_URL:'https://YOUR-PROJECT.supabase.co',
   SUPABASE_ANON_KEY:'YOUR_ANON_KEY'
 };</pre>
 
       <p>Then reload the page.</p>
+
     </main>
   `;
 }
@@ -173,6 +190,7 @@ function configScreen() {
 ========================= */
 
 function nav() {
+
   return `
     <nav class="nav">
 
@@ -203,6 +221,7 @@ function nav() {
         </button>
 
       </div>
+
     </nav>
   `;
 }
@@ -213,8 +232,9 @@ function nav() {
 ========================= */
 
 function home() {
+
   const featured = products
-    .filter(p => p.featured && p.active)
+    .filter((p) => p.featured && p.active)
     .slice(0, 4);
 
   app.innerHTML =
@@ -240,8 +260,8 @@ function home() {
             </h1>
 
             <p>
-              Real accounts, real orders and a secure checkout
-              powered by Supabase.
+              Real accounts, real orders and a secure
+              checkout powered by Supabase.
             </p>
 
             <button class="btn" onclick="shop()">
@@ -251,6 +271,7 @@ function home() {
           </div>
 
         </section>
+
 
         <section class="section">
 
@@ -269,11 +290,12 @@ function home() {
 
           </div>
 
+
           <div class="grid">
 
             ${
               featured.length
-                ? featured.map(card).join('')
+                ? featured.map(card).join("")
                 : `<div class="empty">
                     No featured products yet.
                   </div>`
@@ -295,6 +317,7 @@ function home() {
 ========================= */
 
 function card(p) {
+
   return `
     <article class="product">
 
@@ -310,14 +333,15 @@ function card(p) {
                   width:100%;
                   height:100%;
                   object-fit:cover;
-                  border-radius:18px
+                  border-radius:18px;
                 "
               >
             `
-            : '📦'
+            : "📦"
         }
 
       </div>
+
 
       <div class="body">
 
@@ -338,18 +362,22 @@ function card(p) {
                   ${money(p.old_price)}
                 </span>
               `
-              : ''
+              : ""
           }
 
         </div>
 
+
         <small style="color:#6b7280">
+
           ${
             p.stock > 0
-              ? p.stock + ' in stock'
-              : 'Out of stock'
+              ? `${p.stock} in stock`
+              : "Out of stock"
           }
+
         </small>
+
 
         <div class="actions">
 
@@ -362,7 +390,7 @@ function card(p) {
 
           <button
             class="btn"
-            ${p.stock < 1 ? 'disabled' : ''}
+            ${p.stock < 1 ? "disabled" : ""}
             onclick="add('${p.id}')"
           >
             Add to cart
@@ -382,6 +410,7 @@ function card(p) {
 ========================= */
 
 function shop() {
+
   app.innerHTML =
     nav() +
     `
@@ -405,6 +434,7 @@ function shop() {
 
           </div>
 
+
           <div class="toolbar">
 
             <input
@@ -413,6 +443,7 @@ function shop() {
               placeholder="Search products..."
               oninput="renderProducts()"
             >
+
 
             <select
               class="select"
@@ -424,19 +455,20 @@ function shop() {
                 All categories
               </option>
 
-              ${
-                categories
-                  .map(c => `
+              ${categories
+                .map(
+                  (c) => `
                     <option value="${esc(c.id)}">
                       ${esc(c.name)}
                     </option>
-                  `)
-                  .join('')
-              }
+                  `
+                )
+                .join("")}
 
             </select>
 
           </div>
+
 
           <div
             id="products"
@@ -454,35 +486,53 @@ function shop() {
 }
 
 
+/* =========================
+   RENDER PRODUCTS
+========================= */
+
 function renderProducts() {
+
   const q =
     (
-      document.getElementById('search')?.value || ''
+      document.getElementById("search")?.value || ""
     ).toLowerCase();
 
   const c =
-    document.getElementById('cat')?.value || 'all';
+    document.getElementById("cat")?.value || "all";
 
-  const ps = products.filter(p =>
-    p.active &&
-    (
-      (p.name || '').toLowerCase().includes(q) ||
-      (p.description || '').toLowerCase().includes(q)
-    ) &&
-    (
-      c === 'all' ||
-      p.category_id === c
-    )
-  );
 
-  const target =
-    document.getElementById('products');
+  const ps = products.filter((p) => {
 
-  if (!target) return;
+    const name =
+      String(p.name || "").toLowerCase();
 
-  target.innerHTML =
+    const description =
+      String(p.description || "").toLowerCase();
+
+    return (
+      p.active &&
+      (
+        name.includes(q) ||
+        description.includes(q)
+      ) &&
+      (
+        c === "all" ||
+        p.category_id === c
+      )
+    );
+
+  });
+
+
+  const container =
+    document.getElementById("products");
+
+  if (!container) return;
+
+
+  container.innerHTML =
     ps.length
-      ? ps.map(card).join('')
+      ? ps.map(card).join("")
       : `
         <div
           class="empty"
@@ -499,9 +549,12 @@ function renderProducts() {
 ========================= */
 
 function product(id) {
-  const p = products.find(x => x.id === id);
+
+  const p =
+    products.find((x) => x.id === id);
 
   if (!p) return;
+
 
   modal(`
     <button
@@ -511,17 +564,18 @@ function product(id) {
       ×
     </button>
 
+
     ${
       p.image_url
         ? `
           <img
             src="${esc(p.image_url)}"
-            alt="${esc(p.name)}"
+            alt=""
             style="
               width:100%;
               max-height:320px;
               object-fit:cover;
-              border-radius:18px
+              border-radius:18px;
             "
           >
         `
@@ -531,33 +585,42 @@ function product(id) {
             text-align:center;
             background:#eef2ff;
             border-radius:18px;
-            padding:25px
+            padding:25px;
           ">
             📦
           </div>
         `
     }
 
+
     <h2>
       ${esc(p.name)}
     </h2>
 
+
     <p style="color:#6b7280">
-      ${esc(p.description || '')}
+      ${esc(p.description || "")}
     </p>
+
 
     <h2>
       ${money(p.price)}
     </h2>
 
+
     <p>
       ${p.stock} available
     </p>
 
+
     <button
       class="btn"
-      ${p.stock < 1 ? 'disabled' : ''}
-      onclick="add('${p.id}');closeModal();openCart()"
+      ${p.stock < 1 ? "disabled" : ""}
+      onclick="
+        add('${p.id}');
+        closeModal();
+        openCart();
+      "
     >
       Add to Cart
     </button>
@@ -570,18 +633,23 @@ function product(id) {
 ========================= */
 
 function add(id) {
-  const p = products.find(x => x.id === id);
+
+  const p =
+    products.find((x) => x.id === id);
 
   if (!p || p.stock < 1) {
-    return toast('Out of stock');
+    return toast("Out of stock");
   }
 
-  const item = cart.find(x => x.id === id);
+
+  const item =
+    cart.find((x) => x.id === id);
+
 
   if (item) {
 
     if (item.qty >= p.stock) {
-      return toast('Maximum stock reached');
+      return toast("Maximum stock reached");
     }
 
     item.qty++;
@@ -595,28 +663,33 @@ function add(id) {
 
   }
 
+
   saveCart();
 
-  toast('Added to cart');
+  toast("Added to cart");
 
   home();
 }
 
 
 function cartTotal() {
+
   return cart.reduce(
     (s, x) =>
       s +
       (
-        products.find(p => p.id === x.id)?.price || 0
+        products.find(
+          (p) => p.id === x.id
+        )?.price || 0
       ) *
-      x.qty,
+        x.qty,
     0
   );
 }
 
 
 function openCart() {
+
   modal(`
     <button
       class="close"
@@ -625,44 +698,32 @@ function openCart() {
       ×
     </button>
 
+
     <h2>
       Your Cart
     </h2>
 
+
     ${
       cart.length
-
         ? `
           ${cart
-            .map(x => {
+            .map((x) => {
 
               const p =
                 products.find(
-                  p => p.id === x.id
+                  (p) => p.id === x.id
                 );
 
-              if (!p) return '';
+              if (!p) return "";
 
               return `
                 <div class="cartrow">
 
                   <div class="thumb">
-                    ${
-                      p.image_url
-                        ? `
-                          <img
-                            src="${esc(p.image_url)}"
-                            style="
-                              width:100%;
-                              height:100%;
-                              object-fit:cover;
-                              border-radius:10px
-                            "
-                          >
-                        `
-                        : '📦'
-                    }
+                    📦
                   </div>
+
 
                   <div style="flex:1">
 
@@ -673,6 +734,7 @@ function openCart() {
                     <div>
                       ${money(p.price)} × ${x.qty}
                     </div>
+
 
                     <div class="qty">
 
@@ -697,7 +759,7 @@ function openCart() {
                         style="
                           margin-left:auto;
                           color:#dc2626;
-                          background:none
+                          background:none;
                         "
                       >
                         Remove
@@ -709,31 +771,52 @@ function openCart() {
 
                 </div>
               `;
+
             })
-            .join('')
-          }
+            .join("")}
+
 
           <div class="total">
-            <span>Subtotal</span>
-            <span>${money(cartTotal())}</span>
+
+            <span>
+              Subtotal
+            </span>
+
+            <span>
+              ${money(cartTotal())}
+            </span>
+
           </div>
 
+
           <div class="total">
-            <span>Delivery</span>
+
+            <span>
+              Delivery
+            </span>
+
             <span>
               ${money(settings.delivery_fee)}
             </span>
+
           </div>
 
+
           <div class="total">
-            <b>Total</b>
+
+            <b>
+              Total
+            </b>
+
             <b>
               ${money(
                 cartTotal() +
                 Number(settings.delivery_fee || 0)
               )}
             </b>
+
           </div>
+
 
           <button
             class="btn"
@@ -742,33 +825,45 @@ function openCart() {
           >
             Proceed to Checkout
           </button>
-        `
 
+        `
         : `
           <div class="empty">
             Your cart is empty.
           </div>
         `
     }
+
   `);
 }
 
 
 function changeQty(id, d) {
-  const x = cart.find(i => i.id === id);
-  const p = products.find(p => p.id === id);
+
+  const x =
+    cart.find((i) => i.id === id);
+
+  const p =
+    products.find((p) => p.id === id);
 
   if (!x || !p) return;
 
+
   x.qty += d;
 
+
   if (x.qty < 1) {
-    cart = cart.filter(i => i.id !== id);
+    cart =
+      cart.filter(
+        (i) => i.id !== id
+      );
   }
+
 
   if (x.qty > p.stock) {
     x.qty = p.stock;
   }
+
 
   saveCart();
 
@@ -777,7 +872,11 @@ function changeQty(id, d) {
 
 
 function removeCart(id) {
-  cart = cart.filter(i => i.id !== id);
+
+  cart =
+    cart.filter(
+      (i) => i.id !== id
+    );
 
   saveCart();
 
@@ -790,13 +889,18 @@ function removeCart(id) {
 ========================= */
 
 async function account() {
+
   const u = await user();
 
   if (!u) {
-    return login();
+    login();
+    return;
   }
 
-  const pr = await profile();
+
+  const pr =
+    await profile();
+
 
   modal(`
     <button
@@ -806,9 +910,11 @@ async function account() {
       ×
     </button>
 
+
     <h2>
       My Account
     </h2>
+
 
     <p>
       <b>
@@ -817,8 +923,9 @@ async function account() {
       <br>
       ${esc(u.email)}
       <br>
-      ${esc(pr?.phone || '')}
+      ${esc(pr?.phone || "")}
     </p>
+
 
     <button
       class="btn"
@@ -827,9 +934,14 @@ async function account() {
       My Orders
     </button>
 
+
     <button
       class="btn ghost"
-      onclick="sb.auth.signOut();closeModal();home()"
+      onclick="
+        sb.auth.signOut();
+        closeModal();
+        home();
+      "
     >
       Logout
     </button>
@@ -838,6 +950,7 @@ async function account() {
 
 
 function login() {
+
   modal(`
     <button
       class="close"
@@ -846,11 +959,15 @@ function login() {
       ×
     </button>
 
+
     <h2>
       Login
     </h2>
 
-    <form onsubmit="doLogin(event)">
+
+    <form
+      onsubmit="doLogin(event)"
+    >
 
       <label class="label">
         Email
@@ -863,6 +980,7 @@ function login() {
         type="email"
       >
 
+
       <label class="label">
         Password
       </label>
@@ -874,6 +992,7 @@ function login() {
         type="password"
       >
 
+
       <button
         class="btn"
         style="margin-top:14px"
@@ -883,52 +1002,70 @@ function login() {
 
     </form>
 
+
     <p>
       New here?
 
       <button
-        style="background:none;color:#2563eb"
+        style="
+          background:none;
+          color:#2563eb;
+        "
         onclick="signup()"
       >
         Create account
       </button>
     </p>
 
+
     <p>
+
       <button
-        style="background:none;color:#2563eb"
+        style="
+          background:none;
+          color:#2563eb;
+        "
         onclick="forgotPassword()"
       >
         Forgot password?
       </button>
+
     </p>
   `);
 }
 
 
 async function doLogin(e) {
+
   e.preventDefault();
 
-  const {
-    error
-  } = await sb.auth.signInWithPassword({
-    email: le.value,
-    password: lp.value
-  });
+
+  const { error } =
+    await sb.auth.signInWithPassword({
+      email: le.value,
+      password: lp.value
+    });
+
 
   if (error) {
     return toast(error.message);
   }
 
+
   closeModal();
 
-  toast('Welcome back');
+  toast("Welcome back");
 
   home();
 }
 
 
+/* =========================
+   SIGNUP
+========================= */
+
 function signup() {
+
   modal(`
     <button
       class="close"
@@ -937,15 +1074,21 @@ function signup() {
       ×
     </button>
 
+
     <h2>
       Create account
     </h2>
 
-    <form onsubmit="doSignup(event)">
+
+    <form
+      onsubmit="doSignup(event)"
+    >
 
       <div class="formgrid">
 
+
         <div>
+
           <label class="label">
             Full name
           </label>
@@ -955,9 +1098,12 @@ function signup() {
             id="sn"
             required
           >
+
         </div>
 
+
         <div>
+
           <label class="label">
             Phone
           </label>
@@ -966,7 +1112,9 @@ function signup() {
             class="input"
             id="sp"
           >
+
         </div>
+
 
         <div class="full">
 
@@ -982,6 +1130,7 @@ function signup() {
           >
 
         </div>
+
 
         <div>
 
@@ -999,6 +1148,7 @@ function signup() {
 
         </div>
 
+
         <div>
 
           <label class="label">
@@ -1015,7 +1165,9 @@ function signup() {
 
         </div>
 
+
       </div>
+
 
       <button
         class="btn"
@@ -1030,60 +1182,66 @@ function signup() {
 
 
 async function doSignup(e) {
+
   e.preventDefault();
 
+
   if (sx.value !== sy.value) {
-    return toast('Passwords do not match');
+    return toast("Passwords do not match");
   }
 
-  const {
-    data,
-    error
-  } = await sb.auth.signUp({
-    email: se.value,
-    password: sx.value,
-    options: {
-      data: {
-        full_name: sn.value,
-        phone: sp.value
+
+  const { data, error } =
+    await sb.auth.signUp({
+      email: se.value,
+      password: sx.value,
+
+      options: {
+        data: {
+          full_name: sn.value,
+          phone: sp.value
+        }
       }
-    }
-  });
+    });
+
 
   if (error) {
     return toast(error.message);
   }
 
+
   closeModal();
+
 
   toast(
     data.session
-      ? 'Account created'
-      : 'Check your email to confirm your account'
+      ? "Account created"
+      : "Check your email to confirm your account"
   );
 }
 
 
 async function forgotPassword() {
-  const email = prompt(
-    'Enter your account email'
-  );
+
+  const email =
+    prompt("Enter your account email");
 
   if (!email) return;
 
-  const {
-    error
-  } = await sb.auth.resetPasswordForEmail(
-    email,
-    {
-      redirectTo: location.href
-    }
-  );
+
+  const { error } =
+    await sb.auth.resetPasswordForEmail(
+      email,
+      {
+        redirectTo: location.href
+      }
+    );
+
 
   toast(
     error
       ? error.message
-      : 'Password reset email sent'
+      : "Password reset email sent"
   );
 }
 
@@ -1093,18 +1251,28 @@ async function forgotPassword() {
 ========================= */
 
 async function checkout() {
+
   if (!cart.length) {
-    return toast('Cart is empty');
+    return toast("Cart is empty");
   }
+
 
   const u = await user();
 
+
   if (!u) {
+
     closeModal();
-    return login();
+
+    login();
+
+    return;
   }
 
-  const pr = await profile();
+
+  const pr =
+    await profile();
+
 
   modal(`
     <button
@@ -1114,13 +1282,18 @@ async function checkout() {
       ×
     </button>
 
+
     <h2>
       Checkout
     </h2>
 
-    <form onsubmit="placeOrder(event)">
+
+    <form
+      onsubmit="placeOrder(event)"
+    >
 
       <div class="formgrid">
+
 
         <div>
 
@@ -1131,11 +1304,12 @@ async function checkout() {
           <input
             class="input"
             id="cn"
-            value="${esc(pr?.full_name || '')}"
+            value="${esc(pr?.full_name || "")}"
             required
           >
 
         </div>
+
 
         <div>
 
@@ -1146,11 +1320,12 @@ async function checkout() {
           <input
             class="input"
             id="cp"
-            value="${esc(pr?.phone || '')}"
+            value="${esc(pr?.phone || "")}"
             required
           >
 
         </div>
+
 
         <div class="full">
 
@@ -1161,12 +1336,13 @@ async function checkout() {
           <input
             class="input"
             id="ce"
-            value="${esc(u.email || '')}"
+            value="${esc(u.email || "")}"
             required
             type="email"
           >
 
         </div>
+
 
         <div>
 
@@ -1182,6 +1358,7 @@ async function checkout() {
 
         </div>
 
+
         <div>
 
           <label class="label">
@@ -1194,6 +1371,7 @@ async function checkout() {
           >
 
         </div>
+
 
         <div class="full">
 
@@ -1209,6 +1387,7 @@ async function checkout() {
 
         </div>
 
+
         <div class="full">
 
           <label class="label">
@@ -1222,7 +1401,9 @@ async function checkout() {
 
         </div>
 
+
       </div>
+
 
       <div class="total">
 
@@ -1239,9 +1420,11 @@ async function checkout() {
 
       </div>
 
+
       <div class="notice">
         Payment method: Cash on Delivery
       </div>
+
 
       <button
         class="btn"
@@ -1255,36 +1438,44 @@ async function checkout() {
 }
 
 
+/* =========================
+   PLACE ORDER
+========================= */
+
 async function placeOrder(e) {
+
   e.preventDefault();
 
-  const items = cart.map(x => ({
-    product_id: x.id,
-    quantity: x.qty
-  }));
 
-  const {
-    data,
-    error
-  } = await sb.rpc(
-    'place_order',
-    {
-      p_customer_name: cn.value,
-      p_customer_phone: cp.value,
-      p_customer_email: ce.value,
-      p_delivery_address: ca.value,
-      p_city: cc.value,
-      p_postal_code: cz.value || '',
-      p_instructions: ci.value || '',
-      p_delivery_fee:
-        Number(settings.delivery_fee || 0),
-      p_items: items
-    }
-  );
+  const items =
+    cart.map((x) => ({
+      product_id: x.id,
+      quantity: x.qty
+    }));
+
+
+  const { data, error } =
+    await sb.rpc(
+      "place_order",
+      {
+        p_customer_name: cn.value,
+        p_customer_phone: cp.value,
+        p_customer_email: ce.value,
+        p_delivery_address: ca.value,
+        p_city: cc.value,
+        p_postal_code: cz.value || "",
+        p_instructions: ci.value || "",
+        p_delivery_fee:
+          Number(settings.delivery_fee || 0),
+        p_items: items
+      }
+    );
+
 
   if (error) {
     return toast(error.message);
   }
+
 
   cart = [];
 
@@ -1294,21 +1485,24 @@ async function placeOrder(e) {
 
   orderConfirmation(data);
 
+
   try {
 
     const {
       data: sessionData
     } = await sb.auth.getSession();
 
+
     const token =
       sessionData.session?.access_token;
+
 
     if (token) {
 
       await fetch(
         `${cfg.SUPABASE_URL}/functions/v1/send-order-notifications`,
         {
-          method: 'POST',
+          method: "POST",
 
           headers: {
             Authorization:
@@ -1317,8 +1511,8 @@ async function placeOrder(e) {
             apikey:
               cfg.SUPABASE_ANON_KEY,
 
-            'Content-Type':
-              'application/json'
+            "Content-Type":
+              "application/json"
           },
 
           body: JSON.stringify({
@@ -1326,12 +1520,13 @@ async function placeOrder(e) {
           })
         }
       );
+
     }
 
   } catch (err) {
 
     console.warn(
-      'Notification dispatch failed',
+      "Notification dispatch failed",
       err
     );
 
@@ -1345,14 +1540,16 @@ async function placeOrder(e) {
 
 function orderConfirmation(o) {
 
-  const msg = encodeURIComponent(
-    `NEW ORDER ${o.order_number}
+  const msg =
+    encodeURIComponent(
+      `NEW ORDER ${o.order_number}
 Customer: ${o.customer_name}
 Phone: ${o.customer_phone}
 Address: ${o.delivery_address}, ${o.city}
 Total: ${money(o.total)}
 Payment: COD`
-  );
+    );
+
 
   modal(`
     <div style="text-align:center">
@@ -1361,20 +1558,26 @@ Payment: COD`
         ✅
       </div>
 
+
       <h2>
         Order placed!
       </h2>
 
+
       <p>
         Your order
-        <b>${esc(o.order_number)}</b>
+        <b>
+          ${esc(o.order_number)}
+        </b>
         has been received.
       </p>
+
 
       <p style="color:#6b7280">
         The real order is now stored in Supabase
         and stock has been reduced atomically.
       </p>
+
 
       ${
         settings.whatsapp
@@ -1383,7 +1586,7 @@ Payment: COD`
               class="btn"
               style="
                 display:inline-block;
-                text-decoration:none
+                text-decoration:none;
               "
               target="_blank"
               href="https://wa.me/${encodeURIComponent(
@@ -1393,14 +1596,19 @@ Payment: COD`
               Open WhatsApp
             </a>
           `
-          : ''
+          : ""
       }
+
 
       <br><br>
 
+
       <button
         class="btn ghost"
-        onclick="closeModal();home()"
+        onclick="
+          closeModal();
+          home();
+        "
       >
         Continue Shopping
       </button>
@@ -1420,20 +1628,21 @@ async function myOrders() {
 
   if (!u) return;
 
-  const {
-    data,
-    error
-  } = await sb
-    .from('orders')
-    .select('*,order_items(*)')
-    .eq('user_id', u.id)
-    .order('created_at', {
-      ascending: false
-    });
+
+  const { data, error } =
+    await sb
+      .from("orders")
+      .select("*,order_items(*)")
+      .eq("user_id", u.id)
+      .order("created_at", {
+        ascending: false
+      });
+
 
   if (error) {
     return toast(error.message);
   }
+
 
   modal(`
     <button
@@ -1443,49 +1652,53 @@ async function myOrders() {
       ×
     </button>
 
+
     <h2>
       My Orders
     </h2>
 
+
     ${
       data?.length
-
         ? data
-            .map(o => `
-              <div class="cartrow">
+            .map(
+              (o) => `
+                <div class="cartrow">
 
-                <div style="flex:1">
+                  <div style="flex:1">
 
-                  <b>
-                    ${esc(o.order_number)}
-                  </b>
+                    <b>
+                      ${esc(o.order_number)}
+                    </b>
 
-                  <div>
-                    ${new Date(
-                      o.created_at
-                    ).toLocaleString()}
+                    <div>
+                      ${new Date(
+                        o.created_at
+                      ).toLocaleString()}
+                    </div>
+
+                    <div>
+                      ${money(o.total)}
+                    </div>
+
                   </div>
 
-                  <div>
-                    ${money(o.total)}
-                  </div>
+
+                  <span class="status">
+                    ${esc(o.status)}
+                  </span>
 
                 </div>
-
-                <span class="status">
-                  ${esc(o.status)}
-                </span>
-
-              </div>
-            `)
-            .join('')
-
+              `
+            )
+            .join("")
         : `
           <div class="empty">
             No orders yet.
           </div>
         `
     }
+
   `);
 }
 
@@ -1496,11 +1709,14 @@ async function myOrders() {
 
 async function admin() {
 
-  const pr = await profile();
+  const pr =
+    await profile();
 
-  if (!pr || pr.role !== 'admin') {
-    return toast('Admin access required');
+
+  if (!pr || pr.role !== "admin") {
+    return toast("Admin access required");
   }
+
 
   await adminRender();
 }
@@ -1508,34 +1724,32 @@ async function admin() {
 
 async function adminRender() {
 
-  const [
-    ps,
-    os,
-    cs
-  ] = await Promise.all([
+  const [ps, os, cs] =
+    await Promise.all([
 
-    sb
-      .from('products')
-      .select('*,categories(name)')
-      .order('created_at', {
-        ascending: false
-      }),
+      sb
+        .from("products")
+        .select("*,categories(name)")
+        .order("created_at", {
+          ascending: false
+        }),
 
-    sb
-      .from('orders')
-      .select('*,order_items(*)')
-      .order('created_at', {
-        ascending: false
-      }),
+      sb
+        .from("orders")
+        .select("*,order_items(*)")
+        .order("created_at", {
+          ascending: false
+        }),
 
-    sb
-      .from('profiles')
-      .select('*')
-      .order('created_at', {
-        ascending: false
-      })
+      sb
+        .from("profiles")
+        .select("*")
+        .order("created_at", {
+          ascending: false
+        })
 
-  ]);
+    ]);
+
 
   if (ps.error || os.error || cs.error) {
 
@@ -1544,13 +1758,17 @@ async function adminRender() {
       os.error?.message ||
       cs.error?.message
     );
-
   }
+
 
   products = ps.data || [];
 
-  const orders = os.data || [];
-  const customers = cs.data || [];
+  const orders =
+    os.data || [];
+
+  const customers =
+    cs.data || [];
+
 
   app.innerHTML = `
     <nav class="nav">
@@ -1563,6 +1781,7 @@ async function adminRender() {
         <span>.</span>
       </button>
 
+
       <button
         class="btn ghost"
         onclick="home()"
@@ -1572,37 +1791,45 @@ async function adminRender() {
 
     </nav>
 
+
     <main class="container admin">
 
       <h1>
         Admin Dashboard
       </h1>
 
+
       <div class="adminnav">
 
         ${
           [
-            'dashboard',
-            'products',
-            'orders',
-            'customers',
-            'settings'
+            "dashboard",
+            "products",
+            "orders",
+            "customers",
+            "settings"
           ]
-            .map(x => `
-              <button
-                class="${atab === x ? 'active' : ''}"
-                onclick="atab='${x}';adminRender()"
-              >
-                ${
-                  x[0].toUpperCase() +
-                  x.slice(1)
-                }
-              </button>
-            `)
-            .join('')
+            .map(
+              (x) => `
+                <button
+                  class="${atab === x ? "active" : ""}"
+                  onclick="
+                    atab='${x}';
+                    adminRender();
+                  "
+                >
+                  ${
+                    x.charAt(0).toUpperCase() +
+                    x.slice(1)
+                  }
+                </button>
+              `
+            )
+            .join("")
         }
 
       </div>
+
 
       ${adminContent(orders, customers)}
 
@@ -1611,36 +1838,47 @@ async function adminRender() {
 }
 
 
+/* =========================
+   ADMIN CONTENT
+========================= */
+
 function adminContent(
   orders,
   customers
 ) {
 
-  if (atab === 'dashboard') {
+  if (atab === "dashboard") {
 
     return `
       <div class="cards">
 
         <div class="stat">
           Orders
-          <b>${orders.length}</b>
+          <b>
+            ${orders.length}
+          </b>
         </div>
+
 
         <div class="stat">
           Customers
           <b>
             ${
               customers.filter(
-                x => x.role === 'customer'
+                (x) => x.role === "customer"
               ).length
             }
           </b>
         </div>
 
+
         <div class="stat">
           Products
-          <b>${products.length}</b>
+          <b>
+            ${products.length}
+          </b>
         </div>
+
 
         <div class="stat">
           Sales
@@ -1657,6 +1895,7 @@ function adminContent(
 
       </div>
 
+
       <section class="section">
 
         <h2>
@@ -1672,7 +1911,7 @@ function adminContent(
   }
 
 
-  if (atab === 'products') {
+  if (atab === "products") {
 
     return `
       <div class="sectionhead">
@@ -1695,7 +1934,7 @@ function adminContent(
   }
 
 
-  if (atab === 'orders') {
+  if (atab === "orders") {
 
     return `
       <h2>
@@ -1707,12 +1946,13 @@ function adminContent(
   }
 
 
-  if (atab === 'customers') {
+  if (atab === "customers") {
 
     return `
       <h2>
         Customers
       </h2>
+
 
       <div class="tablewrap">
 
@@ -1725,33 +1965,36 @@ function adminContent(
             <th>Role</th>
           </tr>
 
+
           ${
             customers
               .filter(
-                u => u.role === 'customer'
+                (u) => u.role === "customer"
               )
-              .map(u => `
-                <tr>
+              .map(
+                (u) => `
+                  <tr>
 
-                  <td>
-                    ${esc(u.full_name)}
-                  </td>
+                    <td>
+                      ${esc(u.full_name)}
+                    </td>
 
-                  <td>
-                    ${esc(u.id)}
-                  </td>
+                    <td>
+                      ${esc(u.id)}
+                    </td>
 
-                  <td>
-                    ${esc(u.phone)}
-                  </td>
+                    <td>
+                      ${esc(u.phone)}
+                    </td>
 
-                  <td>
-                    ${esc(u.role)}
-                  </td>
+                    <td>
+                      ${esc(u.role)}
+                    </td>
 
-                </tr>
-              `)
-              .join('')
+                  </tr>
+                `
+              )
+              .join("")
           }
 
         </table>
@@ -1765,6 +2008,7 @@ function adminContent(
     <h2>
       Store Settings
     </h2>
+
 
     <form
       onsubmit="saveSettings(event)"
@@ -1781,6 +2025,7 @@ function adminContent(
         value="${esc(settings.store_name)}"
       >
 
+
       <label class="label">
         Admin email
       </label>
@@ -1792,6 +2037,7 @@ function adminContent(
         type="email"
       >
 
+
       <label class="label">
         WhatsApp number (international, no +)
       </label>
@@ -1801,6 +2047,7 @@ function adminContent(
         id="stw"
         value="${esc(settings.whatsapp)}"
       >
+
 
       <label class="label">
         Delivery fee
@@ -1812,6 +2059,7 @@ function adminContent(
         value="${settings.delivery_fee}"
         type="number"
       >
+
 
       <button
         class="btn"
@@ -1826,7 +2074,7 @@ function adminContent(
 
 
 /* =========================
-   ADMIN PRODUCT TABLE
+   PRODUCT TABLE
 ========================= */
 
 function productTable() {
@@ -1844,49 +2092,53 @@ function productTable() {
           <th>Action</th>
         </tr>
 
+
         ${
           products
-            .map(p => `
-              <tr>
+            .map(
+              (p) => `
+                <tr>
 
-                <td>
-                  ${esc(p.name)}
-                </td>
+                  <td>
+                    ${esc(p.name)}
+                  </td>
 
-                <td>
-                  ${money(p.price)}
-                </td>
+                  <td>
+                    ${money(p.price)}
+                  </td>
 
-                <td>
-                  ${p.stock}
-                </td>
+                  <td>
+                    ${p.stock}
+                  </td>
 
-                <td>
-                  ${esc(
-                    p.categories?.name || ''
-                  )}
-                </td>
+                  <td>
+                    ${esc(
+                      p.categories?.name || ""
+                    )}
+                  </td>
 
-                <td>
+                  <td>
 
-                  <button
-                    onclick="editProduct('${p.id}')"
-                  >
-                    Edit
-                  </button>
+                    <button
+                      onclick="editProduct('${p.id}')"
+                    >
+                      Edit
+                    </button>
 
-                  <button
-                    onclick="deleteProduct('${p.id}')"
-                    style="color:#dc2626"
-                  >
-                    Delete
-                  </button>
 
-                </td>
+                    <button
+                      onclick="deleteProduct('${p.id}')"
+                      style="color:#dc2626"
+                    >
+                      Delete
+                    </button>
 
-              </tr>
-            `)
-            .join('')
+                  </td>
+
+                </tr>
+              `
+            )
+            .join("")
         }
 
       </table>
@@ -1895,6 +2147,10 @@ function productTable() {
   `;
 }
 
+
+/* =========================
+   ORDER TABLE
+========================= */
 
 function orderTable(os) {
 
@@ -1911,68 +2167,75 @@ function orderTable(os) {
           <th>Action</th>
         </tr>
 
+
         ${
           os
-            .map(o => `
-              <tr>
+            .map(
+              (o) => `
+                <tr>
 
-                <td>
-                  ${esc(o.order_number)}
-                </td>
+                  <td>
+                    ${esc(o.order_number)}
+                  </td>
 
-                <td>
-                  ${esc(o.customer_name)}
-                </td>
+                  <td>
+                    ${esc(o.customer_name)}
+                  </td>
 
-                <td>
-                  ${money(o.total)}
-                </td>
+                  <td>
+                    ${money(o.total)}
+                  </td>
 
-                <td>
-                  <span class="status">
-                    ${esc(o.status)}
-                  </span>
-                </td>
+                  <td>
+                    <span class="status">
+                      ${esc(o.status)}
+                    </span>
+                  </td>
 
-                <td>
+                  <td>
 
-                  <select
-                    onchange="setStatus(
-                      '${o.id}',
-                      this.value
-                    )"
-                  >
+                    <select
+                      onchange="
+                        setStatus(
+                          '${o.id}',
+                          this.value
+                        )
+                      "
+                    >
 
-                    ${
-                      [
-                        'pending',
-                        'confirmed',
-                        'processing',
-                        'shipped',
-                        'delivered',
-                        'cancelled'
-                      ]
-                        .map(s => `
-                          <option
-                            ${
-                              s === o.status
-                                ? 'selected'
-                                : ''
-                            }
-                          >
-                            ${s}
-                          </option>
-                        `)
-                        .join('')
-                    }
+                      ${
+                        [
+                          "pending",
+                          "confirmed",
+                          "processing",
+                          "shipped",
+                          "delivered",
+                          "cancelled"
+                        ]
+                          .map(
+                            (s) => `
+                              <option
+                                ${
+                                  s === o.status
+                                    ? "selected"
+                                    : ""
+                                }
+                              >
+                                ${s}
+                              </option>
+                            `
+                          )
+                          .join("")
+                      }
 
-                  </select>
+                    </select>
 
-                </td>
+                  </td>
 
-              </tr>
-            `)
-            .join('')
+                </tr>
+              `
+            )
+            .join("")
         }
 
       </table>
@@ -1982,38 +2245,43 @@ function orderTable(os) {
 }
 
 
+/* =========================
+   ORDER STATUS
+========================= */
+
 async function setStatus(
   id,
   status
 ) {
 
-  const {
-    data: old
-  } = await sb
-    .from('orders')
-    .select('status')
-    .eq('id', id)
-    .single();
+  const { data: old } =
+    await sb
+      .from("orders")
+      .select("status")
+      .eq("id", id)
+      .single();
 
-  const {
-    error
-  } = await sb
-    .from('orders')
-    .update({
-      status
-    })
-    .eq('id', id);
+
+  const { error } =
+    await sb
+      .from("orders")
+      .update({ status })
+      .eq("id", id);
+
 
   if (error) {
     return toast(error.message);
   }
 
-  const u = await user();
+
+  const u =
+    await user();
+
 
   if (u) {
 
     await sb
-      .from('order_status_history')
+      .from("order_status_history")
       .insert({
         order_id: id,
         old_status: old?.status,
@@ -2023,14 +2291,16 @@ async function setStatus(
 
   }
 
-  toast('Order updated');
+
+  toast("Order updated");
 
   adminRender();
 }
 
 
 /* =========================
-   ADD / EDIT PRODUCT
+   PRODUCT FORM
+   IMAGE UPLOAD DISABLED
 ========================= */
 
 function addProduct() {
@@ -2055,11 +2325,12 @@ function addProduct() {
 function editProduct(id) {
 
   const p =
-    products.find(x => x.id === id);
+    products.find(
+      (x) => x.id === id
+    );
 
-  if (!p) {
-    return toast('Product not found');
-  }
+  if (!p) return;
+
 
   modal(`
     <button
@@ -2078,76 +2349,176 @@ function editProduct(id) {
 }
 
 
+function productForm(p = {}) {
+
+  return `
+    <form
+      onsubmit="saveProduct(event,'${p.id || ""}')"
+    >
+
+      <div class="formgrid">
+
+
+        <div class="full">
+
+          <label class="label">
+            Name
+          </label>
+
+          <input
+            class="input"
+            id="pn"
+            value="${esc(p.name || "")}"
+            required
+          >
+
+        </div>
+
+
+        <div>
+
+          <label class="label">
+            Price
+          </label>
+
+          <input
+            class="input"
+            id="pp"
+            type="number"
+            step="0.01"
+            value="${p.price ?? ""}"
+            required
+          >
+
+        </div>
+
+
+        <div>
+
+          <label class="label">
+            Old price
+          </label>
+
+          <input
+            class="input"
+            id="po"
+            type="number"
+            step="0.01"
+            value="${p.old_price ?? ""}"
+          >
+
+        </div>
+
+
+        <div>
+
+          <label class="label">
+            Stock
+          </label>
+
+          <input
+            class="input"
+            id="ps"
+            type="number"
+            min="0"
+            value="${p.stock ?? 0}"
+            required
+          >
+
+        </div>
+
+
+        <div>
+
+          <label class="label">
+            Category
+          </label>
+
+          <select
+            class="select"
+            id="pc"
+          >
+
+            ${categories
+              .map(
+                (c) => `
+                  <option
+                    value="${c.id}"
+                    ${
+                      p.category_id === c.id
+                        ? "selected"
+                        : ""
+                    }
+                  >
+                    ${esc(c.name)}
+                  </option>
+                `
+              )
+              .join("")}
+
+          </select>
+
+        </div>
+
+
+        <div>
+
+          <label class="label">
+            SKU
+          </label>
+
+          <input
+            class="input"
+            id="pk"
+            value="${esc(p.sku || "")}"
+          >
+
+        </div>
+
+
+        <div class="full">
+
+          <label class="label">
+            Description
+          </label>
+
+          <textarea
+            id="pd"
+            rows="3"
+          >${esc(p.description || "")}</textarea>
+
+        </div>
+
+
+      </div>
+
+
+      <button
+        class="btn"
+        style="margin-top:14px"
+      >
+        Save Product
+      </button>
+
+    </form>
+  `;
+}
+
+
 /* =========================
-   PRODUCT FORM
+   SAVE PRODUCT
 ========================= */
 
-async function saveProduct(e, id) {
+async function saveProduct(
+  e,
+  id
+) {
 
   e.preventDefault();
 
-  const imageFile =
-    document.getElementById('pi')?.files?.[0];
-
-  let imageUrl =
-    products.find(p => p.id === id)?.image_url ||
-    null;
-
-
-  /* Upload new image if selected */
-
-  if (imageFile) {
-
-    const fileExt =
-      imageFile.name
-        .split('.')
-        .pop()
-        .toLowerCase();
-
-    const fileName =
-      `${crypto.randomUUID()}.${fileExt}`;
-
-
-    const {
-      error: uploadError
-    } = await sb.storage
-      .from('products')
-      .upload(
-        fileName,
-        imageFile,
-        {
-          cacheControl: '3600',
-          upsert: false
-        }
-      );
-
-
-    if (uploadError) {
-
-      return toast(
-        'Image upload failed: ' +
-        uploadError.message
-      );
-
-    }
-
-
-    const {
-      data: publicUrlData
-    } = sb.storage
-      .from('products')
-      .getPublicUrl(fileName);
-
-
-    imageUrl =
-      publicUrlData.publicUrl;
-  }
-
 
   const name =
-    document.getElementById('pn')
-      .value
-      .trim();
+    document.getElementById("pn").value.trim();
 
 
   const payload = {
@@ -2157,77 +2528,72 @@ async function saveProduct(e, id) {
     slug:
       name
         .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-|-$/g, '') +
-      (id ? '' : '-' + Date.now()),
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "") +
+      (id ? "" : "-" + Date.now()),
 
     price:
       Number(
-        document.getElementById('pp').value
+        document.getElementById("pp").value
       ),
 
     old_price:
       Number(
-        document.getElementById('po').value
+        document.getElementById("po").value
       ) || null,
 
     stock:
       Number(
-        document.getElementById('ps').value
+        document.getElementById("ps").value
       ),
 
     category_id:
-      document.getElementById('pc').value,
+      document.getElementById("pc").value,
 
     sku:
-      document.getElementById('pk').value.trim() ||
-      null,
-
-    image_url:
-      imageUrl,
+      document
+        .getElementById("pk")
+        .value
+        .trim() || null,
 
     description:
-      document.getElementById('pd').value,
+      document.getElementById("pd").value,
 
-    active:
-      true
+    active: true
   };
 
 
-  let q;
+  let result;
 
 
   if (id) {
 
-    q = sb
-      .from('products')
-      .update(payload)
-      .eq('id', id);
+    result =
+      await sb
+        .from("products")
+        .update(payload)
+        .eq("id", id);
 
   } else {
 
-    q = sb
-      .from('products')
-      .insert(payload);
+    result =
+      await sb
+        .from("products")
+        .insert(payload);
 
   }
 
 
-  const {
-    error
-  } = await q;
-
-
-  if (error) {
-    return toast(error.message);
+  if (result.error) {
+    return toast(result.error.message);
   }
 
 
   closeModal();
 
-  toast('Product saved');
+  toast("Product saved");
 
-  await adminRender();
+  adminRender();
 }
 
 
@@ -2237,23 +2603,18 @@ async function saveProduct(e, id) {
 
 async function deleteProduct(id) {
 
-  if (
-    !confirm(
-      'Delete this product?'
-    )
-  ) {
+  if (!confirm("Delete this product?")) {
     return;
   }
 
 
-  const {
-    error
-  } = await sb
-    .from('products')
-    .update({
-      active: false
-    })
-    .eq('id', id);
+  const { error } =
+    await sb
+      .from("products")
+      .update({
+        active: false
+      })
+      .eq("id", id);
 
 
   if (error) {
@@ -2261,40 +2622,42 @@ async function deleteProduct(id) {
   }
 
 
-  toast('Product archived');
+  toast("Product archived");
 
   adminRender();
 }
 
 
 /* =========================
-   SETTINGS
+   STORE SETTINGS
 ========================= */
 
 async function saveSettings(e) {
 
   e.preventDefault();
 
-  const {
-    error
-  } = await sb
-    .from('store_settings')
-    .update({
-      store_name:
-        document.getElementById('stn').value,
 
-      admin_email:
-        document.getElementById('ste').value,
+  const { error } =
+    await sb
+      .from("store_settings")
+      .update({
 
-      whatsapp:
-        document.getElementById('stw').value,
+        store_name:
+          document.getElementById("stn").value,
 
-      delivery_fee:
-        Number(
-          document.getElementById('std').value
-        )
-    })
-    .eq('id', true);
+        admin_email:
+          document.getElementById("ste").value,
+
+        whatsapp:
+          document.getElementById("stw").value,
+
+        delivery_fee:
+          Number(
+            document.getElementById("std").value
+          )
+
+      })
+      .eq("id", true);
 
 
   if (error) {
@@ -2306,22 +2669,22 @@ async function saveSettings(e) {
     ...settings,
 
     store_name:
-      document.getElementById('stn').value,
+      document.getElementById("stn").value,
 
     admin_email:
-      document.getElementById('ste').value,
+      document.getElementById("ste").value,
 
     whatsapp:
-      document.getElementById('stw').value,
+      document.getElementById("stw").value,
 
     delivery_fee:
       Number(
-        document.getElementById('std').value
+        document.getElementById("std").value
       )
   };
 
 
-  toast('Settings saved');
+  toast("Settings saved");
 
   adminRender();
 }
@@ -2342,9 +2705,11 @@ function footer() {
           ${esc(settings.store_name)}
         </strong>
 
+
         <p>
           Modern shopping, made simple.
         </p>
+
 
         <p>
 
@@ -2375,6 +2740,7 @@ function footer() {
 
         </p>
 
+
         <small>
           © ${new Date().getFullYear()}
           ${esc(settings.store_name)}.
@@ -2396,18 +2762,22 @@ function modal(html) {
 
   closeModal();
 
+
   const m =
-    document.createElement('div');
+    document.createElement("div");
 
-  m.className = 'modal';
 
-  m.id = 'modal';
+  m.className = "modal";
+
+  m.id = "modal";
+
 
   m.innerHTML = `
     <div class="panel">
       ${html}
     </div>
   `;
+
 
   document.body.appendChild(m);
 }
@@ -2416,7 +2786,7 @@ function modal(html) {
 function closeModal() {
 
   document
-    .getElementById('modal')
+    .getElementById("modal")
     ?.remove();
 }
 
@@ -2428,7 +2798,8 @@ function closeModal() {
 function toast(t) {
 
   const x =
-    document.createElement('div');
+    document.createElement("div");
+
 
   x.style = `
     position:fixed;
@@ -2441,12 +2812,15 @@ function toast(t) {
     border-radius:10px;
     z-index:50;
     font-weight:700;
-    max-width:90vw
+    max-width:90vw;
   `;
+
 
   x.textContent = t;
 
+
   document.body.appendChild(x);
+
 
   setTimeout(
     () => x.remove(),
@@ -2456,7 +2830,7 @@ function toast(t) {
 
 
 /* =========================
-   START
+   AUTH LISTENER
 ========================= */
 
 if (sb) {
@@ -2466,6 +2840,11 @@ if (sb) {
   );
 
 }
+
+
+/* =========================
+   START APP
+========================= */
 
 loadBase();
 ```
