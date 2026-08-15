@@ -33,7 +33,9 @@ let settings = {
   delivery_fee: 200
 };
 
-let cart = JSON.parse(localStorage.getItem('nova_cart_v2') || '[]');
+let cart = JSON.parse(
+  localStorage.getItem('nova_cart_v2') || '[]'
+);
 
 let atab = 'dashboard';
 
@@ -41,20 +43,26 @@ const money = n =>
   'Rs. ' + Number(n || 0).toLocaleString('en-PK');
 
 const esc = s =>
-  String(s ?? '').replace(/[&<>"']/g, m => ({
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#039;'
-  }[m]));
+  String(s ?? '').replace(
+    /[&<>"']/g,
+    m => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#039;'
+    }[m])
+  );
 
 const saveCart = () =>
-  localStorage.setItem('nova_cart_v2', JSON.stringify(cart));
+  localStorage.setItem(
+    'nova_cart_v2',
+    JSON.stringify(cart)
+  );
 
 
 /* =========================
-   AUTH
+   AUTH / PROFILE
 ========================= */
 
 async function user() {
@@ -64,7 +72,6 @@ async function user() {
 
   return data.user || null;
 }
-
 
 async function profile() {
   const u = await user();
@@ -86,14 +93,12 @@ async function profile() {
 ========================= */
 
 async function loadBase() {
-
   if (!sb) {
     configScreen();
     return;
   }
 
   const [p, c, s] = await Promise.all([
-
     sb
       .from('products')
       .select('*,categories(name)')
@@ -109,19 +114,19 @@ async function loadBase() {
       .select('*')
       .eq('id', true)
       .single()
-
   ]);
 
   if (p.error || c.error || s.error) {
-
     app.innerHTML = `
       <main class="container" style="padding:40px">
         <h2>Supabase error</h2>
-        <p>${esc(
-          p.error?.message ||
-          c.error?.message ||
-          s.error?.message
-        )}</p>
+        <p>
+          ${esc(
+            p.error?.message ||
+            c.error?.message ||
+            s.error?.message
+          )}
+        </p>
       </main>
     `;
 
@@ -136,15 +141,9 @@ async function loadBase() {
 }
 
 
-/* =========================
-   CONFIG SCREEN
-========================= */
-
 function configScreen() {
-
   app.innerHTML = `
     <main class="container" style="padding:40px">
-
       <h1>NOVA Phase 2</h1>
 
       <p>
@@ -157,14 +156,13 @@ function configScreen() {
         color:#fff;
         padding:18px;
         border-radius:12px;
-        overflow:auto;
+        overflow:auto
       ">window.NOVA_CONFIG={
   SUPABASE_URL:'https://YOUR-PROJECT.supabase.co',
   SUPABASE_ANON_KEY:'YOUR_ANON_KEY'
 };</pre>
 
       <p>Then reload the page.</p>
-
     </main>
   `;
 }
@@ -175,7 +173,6 @@ function configScreen() {
 ========================= */
 
 function nav() {
-
   return `
     <nav class="nav">
 
@@ -206,7 +203,6 @@ function nav() {
         </button>
 
       </div>
-
     </nav>
   `;
 }
@@ -217,7 +213,6 @@ function nav() {
 ========================= */
 
 function home() {
-
   const featured = products
     .filter(p => p.featured && p.active)
     .slice(0, 4);
@@ -261,9 +256,14 @@ function home() {
 
           <div class="sectionhead">
 
-            <h2>Featured Products</h2>
+            <h2>
+              Featured Products
+            </h2>
 
-            <button class="btn secondary" onclick="shop()">
+            <button
+              class="btn secondary"
+              onclick="shop()"
+            >
               View all
             </button>
 
@@ -276,7 +276,7 @@ function home() {
                 ? featured.map(card).join('')
                 : `<div class="empty">
                     No featured products yet.
-                   </div>`
+                  </div>`
             }
 
           </div>
@@ -295,7 +295,6 @@ function home() {
 ========================= */
 
 function card(p) {
-
   return `
     <article class="product">
 
@@ -322,7 +321,9 @@ function card(p) {
 
       <div class="body">
 
-        <h3>${esc(p.name)}</h3>
+        <h3>
+          ${esc(p.name)}
+        </h3>
 
         <div>
 
@@ -381,7 +382,6 @@ function card(p) {
 ========================= */
 
 function shop() {
-
   app.innerHTML =
     nav() +
     `
@@ -393,7 +393,9 @@ function shop() {
 
             <div>
 
-              <h2>Shop</h2>
+              <h2>
+                Shop
+              </h2>
 
               <p style="color:#6b7280">
                 Browse products from the live database.
@@ -453,28 +455,25 @@ function shop() {
 
 
 function renderProducts() {
-
   const q =
-    (document.getElementById('search')?.value || '')
-      .toLowerCase();
+    (
+      document.getElementById('search')?.value || ''
+    ).toLowerCase();
 
   const c =
     document.getElementById('cat')?.value || 'all';
 
-  const ps = products.filter(p => {
-
-    const name =
-      String(p.name || '').toLowerCase();
-
-    const description =
-      String(p.description || '').toLowerCase();
-
-    return (
-      p.active &&
-      (name.includes(q) || description.includes(q)) &&
-      (c === 'all' || p.category_id === c)
-    );
-  });
+  const ps = products.filter(p =>
+    p.active &&
+    (
+      (p.name || '').toLowerCase().includes(q) ||
+      (p.description || '').toLowerCase().includes(q)
+    ) &&
+    (
+      c === 'all' ||
+      p.category_id === c
+    )
+  );
 
   const target =
     document.getElementById('products');
@@ -500,7 +499,6 @@ function renderProducts() {
 ========================= */
 
 function product(id) {
-
   const p = products.find(x => x.id === id);
 
   if (!p) return;
@@ -540,7 +538,9 @@ function product(id) {
         `
     }
 
-    <h2>${esc(p.name)}</h2>
+    <h2>
+      ${esc(p.name)}
+    </h2>
 
     <p style="color:#6b7280">
       ${esc(p.description || '')}
@@ -570,7 +570,6 @@ function product(id) {
 ========================= */
 
 function add(id) {
-
   const p = products.find(x => x.id === id);
 
   if (!p || p.stock < 1) {
@@ -605,11 +604,12 @@ function add(id) {
 
 
 function cartTotal() {
-
   return cart.reduce(
     (s, x) =>
       s +
-      (products.find(p => p.id === x.id)?.price || 0) *
+      (
+        products.find(p => p.id === x.id)?.price || 0
+      ) *
       x.qty,
     0
   );
@@ -617,7 +617,6 @@ function cartTotal() {
 
 
 function openCart() {
-
   modal(`
     <button
       class="close"
@@ -626,82 +625,93 @@ function openCart() {
       ×
     </button>
 
-    <h2>Your Cart</h2>
+    <h2>
+      Your Cart
+    </h2>
 
     ${
       cart.length
+
         ? `
-          ${cart.map(x => {
+          ${cart
+            .map(x => {
 
-            const p =
-              products.find(p => p.id === x.id);
+              const p =
+                products.find(
+                  p => p.id === x.id
+                );
 
-            if (!p) return '';
+              if (!p) return '';
 
-            return `
-              <div class="cartrow">
+              return `
+                <div class="cartrow">
 
-                <div class="thumb">
-                  ${
-                    p.image_url
-                      ? `
-                        <img
-                          src="${esc(p.image_url)}"
-                          style="
-                            width:100%;
-                            height:100%;
-                            object-fit:cover;
-                            border-radius:10px
-                          "
-                        >
-                      `
-                      : '📦'
-                  }
-                </div>
-
-                <div style="flex:1">
-
-                  <b>${esc(p.name)}</b>
-
-                  <div>
-                    ${money(p.price)} × ${x.qty}
+                  <div class="thumb">
+                    ${
+                      p.image_url
+                        ? `
+                          <img
+                            src="${esc(p.image_url)}"
+                            style="
+                              width:100%;
+                              height:100%;
+                              object-fit:cover;
+                              border-radius:10px
+                            "
+                          >
+                        `
+                        : '📦'
+                    }
                   </div>
 
-                  <div class="qty">
+                  <div style="flex:1">
 
-                    <button
-                      onclick="changeQty('${p.id}',-1)"
-                    >
-                      −
-                    </button>
+                    <b>
+                      ${esc(p.name)}
+                    </b>
 
-                    <span>${x.qty}</span>
+                    <div>
+                      ${money(p.price)} × ${x.qty}
+                    </div>
 
-                    <button
-                      onclick="changeQty('${p.id}',1)"
-                    >
-                      +
-                    </button>
+                    <div class="qty">
 
-                    <button
-                      onclick="removeCart('${p.id}')"
-                      style="
-                        margin-left:auto;
-                        color:#dc2626;
-                        background:none
-                      "
-                    >
-                      Remove
-                    </button>
+                      <button
+                        onclick="changeQty('${p.id}',-1)"
+                      >
+                        −
+                      </button>
+
+                      <span>
+                        ${x.qty}
+                      </span>
+
+                      <button
+                        onclick="changeQty('${p.id}',1)"
+                      >
+                        +
+                      </button>
+
+                      <button
+                        onclick="removeCart('${p.id}')"
+                        style="
+                          margin-left:auto;
+                          color:#dc2626;
+                          background:none
+                        "
+                      >
+                        Remove
+                      </button>
+
+                    </div>
 
                   </div>
 
                 </div>
-
-              </div>
-            `;
-
-          }).join('')}
+              `;
+            })
+            .join('')
+          }
 
           <div class="total">
             <span>Subtotal</span>
@@ -733,6 +743,7 @@ function openCart() {
             Proceed to Checkout
           </button>
         `
+
         : `
           <div class="empty">
             Your cart is empty.
@@ -744,12 +755,8 @@ function openCart() {
 
 
 function changeQty(id, d) {
-
-  const x =
-    cart.find(i => i.id === id);
-
-  const p =
-    products.find(p => p.id === id);
+  const x = cart.find(i => i.id === id);
+  const p = products.find(p => p.id === id);
 
   if (!x || !p) return;
 
@@ -770,9 +777,7 @@ function changeQty(id, d) {
 
 
 function removeCart(id) {
-
-  cart =
-    cart.filter(i => i.id !== id);
+  cart = cart.filter(i => i.id !== id);
 
   saveCart();
 
@@ -785,12 +790,10 @@ function removeCart(id) {
 ========================= */
 
 async function account() {
-
   const u = await user();
 
   if (!u) {
-    login();
-    return;
+    return login();
   }
 
   const pr = await profile();
@@ -803,7 +806,9 @@ async function account() {
       ×
     </button>
 
-    <h2>My Account</h2>
+    <h2>
+      My Account
+    </h2>
 
     <p>
       <b>
@@ -833,7 +838,6 @@ async function account() {
 
 
 function login() {
-
   modal(`
     <button
       class="close"
@@ -842,7 +846,9 @@ function login() {
       ×
     </button>
 
-    <h2>Login</h2>
+    <h2>
+      Login
+    </h2>
 
     <form onsubmit="doLogin(event)">
 
@@ -881,10 +887,7 @@ function login() {
       New here?
 
       <button
-        style="
-          background:none;
-          color:#2563eb
-        "
+        style="background:none;color:#2563eb"
         onclick="signup()"
       >
         Create account
@@ -893,10 +896,7 @@ function login() {
 
     <p>
       <button
-        style="
-          background:none;
-          color:#2563eb
-        "
+        style="background:none;color:#2563eb"
         onclick="forgotPassword()"
       >
         Forgot password?
@@ -907,14 +907,14 @@ function login() {
 
 
 async function doLogin(e) {
-
   e.preventDefault();
 
-  const { error } =
-    await sb.auth.signInWithPassword({
-      email: document.getElementById('le').value,
-      password: document.getElementById('lp').value
-    });
+  const {
+    error
+  } = await sb.auth.signInWithPassword({
+    email: le.value,
+    password: lp.value
+  });
 
   if (error) {
     return toast(error.message);
@@ -929,7 +929,6 @@ async function doLogin(e) {
 
 
 function signup() {
-
   modal(`
     <button
       class="close"
@@ -938,7 +937,9 @@ function signup() {
       ×
     </button>
 
-    <h2>Create account</h2>
+    <h2>
+      Create account
+    </h2>
 
     <form onsubmit="doSignup(event)">
 
@@ -1029,38 +1030,25 @@ function signup() {
 
 
 async function doSignup(e) {
-
   e.preventDefault();
 
-  const password =
-    document.getElementById('sx').value;
-
-  const confirmPassword =
-    document.getElementById('sy').value;
-
-  if (password !== confirmPassword) {
+  if (sx.value !== sy.value) {
     return toast('Passwords do not match');
   }
 
-  const { data, error } =
-    await sb.auth.signUp({
-
-      email:
-        document.getElementById('se').value,
-
-      password,
-
-      options: {
-        data: {
-          full_name:
-            document.getElementById('sn').value,
-
-          phone:
-            document.getElementById('sp').value
-        }
+  const {
+    data,
+    error
+  } = await sb.auth.signUp({
+    email: se.value,
+    password: sx.value,
+    options: {
+      data: {
+        full_name: sn.value,
+        phone: sp.value
       }
-
-    });
+    }
+  });
 
   if (error) {
     return toast(error.message);
@@ -1077,19 +1065,20 @@ async function doSignup(e) {
 
 
 async function forgotPassword() {
-
-  const email =
-    prompt('Enter your account email');
+  const email = prompt(
+    'Enter your account email'
+  );
 
   if (!email) return;
 
-  const { error } =
-    await sb.auth.resetPasswordForEmail(
-      email,
-      {
-        redirectTo: location.href
-      }
-    );
+  const {
+    error
+  } = await sb.auth.resetPasswordForEmail(
+    email,
+    {
+      redirectTo: location.href
+    }
+  );
 
   toast(
     error
@@ -1104,7 +1093,6 @@ async function forgotPassword() {
 ========================= */
 
 async function checkout() {
-
   if (!cart.length) {
     return toast('Cart is empty');
   }
@@ -1113,8 +1101,7 @@ async function checkout() {
 
   if (!u) {
     closeModal();
-    login();
-    return;
+    return login();
   }
 
   const pr = await profile();
@@ -1127,7 +1114,9 @@ async function checkout() {
       ×
     </button>
 
-    <h2>Checkout</h2>
+    <h2>
+      Checkout
+    </h2>
 
     <form onsubmit="placeOrder(event)">
 
@@ -1237,7 +1226,9 @@ async function checkout() {
 
       <div class="total">
 
-        <span>Total</span>
+        <span>
+          Total
+        </span>
 
         <span>
           ${money(
@@ -1265,46 +1256,31 @@ async function checkout() {
 
 
 async function placeOrder(e) {
-
   e.preventDefault();
 
-  const items =
-    cart.map(x => ({
-      product_id: x.id,
-      quantity: x.qty
-    }));
+  const items = cart.map(x => ({
+    product_id: x.id,
+    quantity: x.qty
+  }));
 
-  const { data, error } =
-    await sb.rpc(
-      'place_order',
-      {
-        p_customer_name:
-          document.getElementById('cn').value,
-
-        p_customer_phone:
-          document.getElementById('cp').value,
-
-        p_customer_email:
-          document.getElementById('ce').value,
-
-        p_delivery_address:
-          document.getElementById('ca').value,
-
-        p_city:
-          document.getElementById('cc').value,
-
-        p_postal_code:
-          document.getElementById('cz').value || '',
-
-        p_instructions:
-          document.getElementById('ci').value || '',
-
-        p_delivery_fee:
-          Number(settings.delivery_fee || 0),
-
-        p_items: items
-      }
-    );
+  const {
+    data,
+    error
+  } = await sb.rpc(
+    'place_order',
+    {
+      p_customer_name: cn.value,
+      p_customer_phone: cp.value,
+      p_customer_email: ce.value,
+      p_delivery_address: ca.value,
+      p_city: cc.value,
+      p_postal_code: cz.value || '',
+      p_instructions: ci.value || '',
+      p_delivery_fee:
+        Number(settings.delivery_fee || 0),
+      p_items: items
+    }
+  );
 
   if (error) {
     return toast(error.message);
@@ -1320,52 +1296,42 @@ async function placeOrder(e) {
 
   try {
 
-    const { data: sessionData } =
-      await sb.auth.getSession();
+    const {
+      data: sessionData
+    } = await sb.auth.getSession();
 
     const token =
       sessionData.session?.access_token;
 
     if (token) {
 
-      const response =
-        await fetch(
-          `${cfg.SUPABASE_URL}/functions/v1/send-order-notifications`,
-          {
-            method: 'POST',
+      await fetch(
+        `${cfg.SUPABASE_URL}/functions/v1/send-order-notifications`,
+        {
+          method: 'POST',
 
-            headers: {
-              Authorization:
-                `Bearer ${token}`,
+          headers: {
+            Authorization:
+              `Bearer ${token}`,
 
-              apikey:
-                cfg.SUPABASE_ANON_KEY,
+            apikey:
+              cfg.SUPABASE_ANON_KEY,
 
-              'Content-Type':
-                'application/json'
-            },
+            'Content-Type':
+              'application/json'
+          },
 
-            body: JSON.stringify({
-              order_id: data.id
-            })
-          }
-        );
-
-      if (!response.ok) {
-
-        console.warn(
-          'Notification function returned:',
-          response.status
-        );
-
-      }
-
+          body: JSON.stringify({
+            order_id: data.id
+          })
+        }
+      );
     }
 
   } catch (err) {
 
     console.warn(
-      'Notification dispatch failed:',
+      'Notification dispatch failed',
       err
     );
 
@@ -1379,15 +1345,14 @@ async function placeOrder(e) {
 
 function orderConfirmation(o) {
 
-  const msg =
-    encodeURIComponent(
-      `NEW ORDER ${o.order_number}
+  const msg = encodeURIComponent(
+    `NEW ORDER ${o.order_number}
 Customer: ${o.customer_name}
 Phone: ${o.customer_phone}
 Address: ${o.delivery_address}, ${o.city}
 Total: ${money(o.total)}
 Payment: COD`
-    );
+  );
 
   modal(`
     <div style="text-align:center">
@@ -1431,8 +1396,7 @@ Payment: COD`
           : ''
       }
 
-      <br>
-      <br>
+      <br><br>
 
       <button
         class="btn ghost"
@@ -1456,14 +1420,16 @@ async function myOrders() {
 
   if (!u) return;
 
-  const { data, error } =
-    await sb
-      .from('orders')
-      .select('*,order_items(*)')
-      .eq('user_id', u.id)
-      .order('created_at', {
-        ascending: false
-      });
+  const {
+    data,
+    error
+  } = await sb
+    .from('orders')
+    .select('*,order_items(*)')
+    .eq('user_id', u.id)
+    .order('created_at', {
+      ascending: false
+    });
 
   if (error) {
     return toast(error.message);
@@ -1477,37 +1443,43 @@ async function myOrders() {
       ×
     </button>
 
-    <h2>My Orders</h2>
+    <h2>
+      My Orders
+    </h2>
 
     ${
       data?.length
-        ? data.map(o => `
-            <div class="cartrow">
 
-              <div style="flex:1">
+        ? data
+            .map(o => `
+              <div class="cartrow">
 
-                <b>
-                  ${esc(o.order_number)}
-                </b>
+                <div style="flex:1">
 
-                <div>
-                  ${new Date(
-                    o.created_at
-                  ).toLocaleString()}
+                  <b>
+                    ${esc(o.order_number)}
+                  </b>
+
+                  <div>
+                    ${new Date(
+                      o.created_at
+                    ).toLocaleString()}
+                  </div>
+
+                  <div>
+                    ${money(o.total)}
+                  </div>
+
                 </div>
 
-                <div>
-                  ${money(o.total)}
-                </div>
+                <span class="status">
+                  ${esc(o.status)}
+                </span>
 
               </div>
+            `)
+            .join('')
 
-              <span class="status">
-                ${esc(o.status)}
-              </span>
-
-            </div>
-          `).join('')
         : `
           <div class="empty">
             No orders yet.
@@ -1536,31 +1508,34 @@ async function admin() {
 
 async function adminRender() {
 
-  const [ps, os, cs] =
-    await Promise.all([
+  const [
+    ps,
+    os,
+    cs
+  ] = await Promise.all([
 
-      sb
-        .from('products')
-        .select('*,categories(name)')
-        .order('created_at', {
-          ascending: false
-        }),
+    sb
+      .from('products')
+      .select('*,categories(name)')
+      .order('created_at', {
+        ascending: false
+      }),
 
-      sb
-        .from('orders')
-        .select('*,order_items(*)')
-        .order('created_at', {
-          ascending: false
-        }),
+    sb
+      .from('orders')
+      .select('*,order_items(*)')
+      .order('created_at', {
+        ascending: false
+      }),
 
-      sb
-        .from('profiles')
-        .select('*')
-        .order('created_at', {
-          ascending: false
-        })
+    sb
+      .from('profiles')
+      .select('*')
+      .order('created_at', {
+        ascending: false
+      })
 
-    ]);
+  ]);
 
   if (ps.error || os.error || cs.error) {
 
@@ -1569,18 +1544,15 @@ async function adminRender() {
       os.error?.message ||
       cs.error?.message
     );
+
   }
 
   products = ps.data || [];
 
-  const orders =
-    os.data || [];
-
-  const customers =
-    cs.data || [];
+  const orders = os.data || [];
+  const customers = cs.data || [];
 
   app.innerHTML = `
-
     <nav class="nav">
 
       <button
@@ -1616,23 +1588,23 @@ async function adminRender() {
             'customers',
             'settings'
           ]
-          .map(x => `
-            <button
-              class="${atab === x ? 'active' : ''}"
-              onclick="atab='${x}';adminRender()"
-            >
-              ${x[0].toUpperCase() + x.slice(1)}
-            </button>
-          `)
-          .join('')
+            .map(x => `
+              <button
+                class="${atab === x ? 'active' : ''}"
+                onclick="atab='${x}';adminRender()"
+              >
+                ${
+                  x[0].toUpperCase() +
+                  x.slice(1)
+                }
+              </button>
+            `)
+            .join('')
         }
 
       </div>
 
-      ${adminContent(
-        orders,
-        customers
-      )}
+      ${adminContent(orders, customers)}
 
     </main>
   `;
@@ -1647,7 +1619,6 @@ function adminContent(
   if (atab === 'dashboard') {
 
     return `
-
       <div class="cards">
 
         <div class="stat">
@@ -1704,7 +1675,6 @@ function adminContent(
   if (atab === 'products') {
 
     return `
-
       <div class="sectionhead">
 
         <h2>
@@ -1728,7 +1698,10 @@ function adminContent(
   if (atab === 'orders') {
 
     return `
-      <h2>Orders</h2>
+      <h2>
+        Orders
+      </h2>
+
       ${orderTable(orders)}
     `;
   }
@@ -1737,7 +1710,6 @@ function adminContent(
   if (atab === 'customers') {
 
     return `
-
       <h2>
         Customers
       </h2>
@@ -1790,7 +1762,6 @@ function adminContent(
 
 
   return `
-
     <h2>
       Store Settings
     </h2>
@@ -1855,13 +1826,12 @@ function adminContent(
 
 
 /* =========================
-   PRODUCT TABLE
+   ADMIN PRODUCT TABLE
 ========================= */
 
 function productTable() {
 
   return `
-
     <div class="tablewrap">
 
       <table class="table">
@@ -1875,48 +1845,48 @@ function productTable() {
         </tr>
 
         ${
-          products.map(p => `
+          products
+            .map(p => `
+              <tr>
 
-            <tr>
+                <td>
+                  ${esc(p.name)}
+                </td>
 
-              <td>
-                ${esc(p.name)}
-              </td>
+                <td>
+                  ${money(p.price)}
+                </td>
 
-              <td>
-                ${money(p.price)}
-              </td>
+                <td>
+                  ${p.stock}
+                </td>
 
-              <td>
-                ${p.stock}
-              </td>
+                <td>
+                  ${esc(
+                    p.categories?.name || ''
+                  )}
+                </td>
 
-              <td>
-                ${esc(
-                  p.categories?.name || ''
-                )}
-              </td>
+                <td>
 
-              <td>
+                  <button
+                    onclick="editProduct('${p.id}')"
+                  >
+                    Edit
+                  </button>
 
-                <button
-                  onclick="editProduct('${p.id}')"
-                >
-                  Edit
-                </button>
+                  <button
+                    onclick="deleteProduct('${p.id}')"
+                    style="color:#dc2626"
+                  >
+                    Delete
+                  </button>
 
-                <button
-                  onclick="deleteProduct('${p.id}')"
-                  style="color:#dc2626"
-                >
-                  Delete
-                </button>
+                </td>
 
-              </td>
-
-            </tr>
-
-          `).join('')
+              </tr>
+            `)
+            .join('')
         }
 
       </table>
@@ -1926,85 +1896,83 @@ function productTable() {
 }
 
 
-/* =========================
-   ORDER TABLE
-========================= */
-
 function orderTable(os) {
 
   return `
-
     <div class="tablewrap">
 
       <table class="table">
 
         <tr>
-
           <th>Order</th>
           <th>Customer</th>
           <th>Total</th>
           <th>Status</th>
           <th>Action</th>
-
         </tr>
 
         ${
-          os.map(o => `
+          os
+            .map(o => `
+              <tr>
 
-            <tr>
+                <td>
+                  ${esc(o.order_number)}
+                </td>
 
-              <td>
-                ${esc(o.order_number)}
-              </td>
+                <td>
+                  ${esc(o.customer_name)}
+                </td>
 
-              <td>
-                ${esc(o.customer_name)}
-              </td>
+                <td>
+                  ${money(o.total)}
+                </td>
 
-              <td>
-                ${money(o.total)}
-              </td>
+                <td>
+                  <span class="status">
+                    ${esc(o.status)}
+                  </span>
+                </td>
 
-              <td>
+                <td>
 
-                <span class="status">
-                  ${esc(o.status)}
-                </span>
+                  <select
+                    onchange="setStatus(
+                      '${o.id}',
+                      this.value
+                    )"
+                  >
 
-              </td>
+                    ${
+                      [
+                        'pending',
+                        'confirmed',
+                        'processing',
+                        'shipped',
+                        'delivered',
+                        'cancelled'
+                      ]
+                        .map(s => `
+                          <option
+                            ${
+                              s === o.status
+                                ? 'selected'
+                                : ''
+                            }
+                          >
+                            ${s}
+                          </option>
+                        `)
+                        .join('')
+                    }
 
-              <td>
+                  </select>
 
-                <select
-                  onchange="setStatus('${o.id}',this.value)"
-                >
+                </td>
 
-                  ${
-                    [
-                      'pending',
-                      'confirmed',
-                      'processing',
-                      'shipped',
-                      'delivered',
-                      'cancelled'
-                    ]
-                    .map(s => `
-                      <option
-                        ${s === o.status ? 'selected' : ''}
-                      >
-                        ${s}
-                      </option>
-                    `)
-                    .join('')
-                  }
-
-                </select>
-
-              </td>
-
-            </tr>
-
-          `).join('')
+              </tr>
+            `)
+            .join('')
         }
 
       </table>
@@ -2013,30 +1981,28 @@ function orderTable(os) {
   `;
 }
 
-
-/* =========================
-   ORDER STATUS
-========================= */
 
 async function setStatus(
   id,
   status
 ) {
 
-  const { data: old } =
-    await sb
-      .from('orders')
-      .select('status')
-      .eq('id', id)
-      .single();
+  const {
+    data: old
+  } = await sb
+    .from('orders')
+    .select('status')
+    .eq('id', id)
+    .single();
 
-  const { error } =
-    await sb
-      .from('orders')
-      .update({
-        status
-      })
-      .eq('id', id);
+  const {
+    error
+  } = await sb
+    .from('orders')
+    .update({
+      status
+    })
+    .eq('id', id);
 
   if (error) {
     return toast(error.message);
@@ -2044,14 +2010,18 @@ async function setStatus(
 
   const u = await user();
 
-  await sb
-    .from('order_status_history')
-    .insert({
-      order_id: id,
-      old_status: old?.status,
-      new_status: status,
-      changed_by: u?.id
-    });
+  if (u) {
+
+    await sb
+      .from('order_status_history')
+      .insert({
+        order_id: id,
+        old_status: old?.status,
+        new_status: status,
+        changed_by: u.id
+      });
+
+  }
 
   toast('Order updated');
 
@@ -2115,7 +2085,6 @@ function editProduct(id) {
 function productForm(p = {}) {
 
   return `
-
     <form
       onsubmit="saveProduct(event,'${p.id || ''}')"
     >
@@ -2203,14 +2172,20 @@ function productForm(p = {}) {
           >
 
             ${
-              categories.map(c => `
-                <option
-                  value="${c.id}"
-                  ${p.category_id === c.id ? 'selected' : ''}
-                >
-                  ${esc(c.name)}
-                </option>
-              `).join('')
+              categories
+                .map(c => `
+                  <option
+                    value="${c.id}"
+                    ${
+                      p.category_id === c.id
+                        ? 'selected'
+                        : ''
+                    }
+                  >
+                    ${esc(c.name)}
+                  </option>
+                `)
+                .join('')
             }
 
           </select>
@@ -2249,31 +2224,28 @@ function productForm(p = {}) {
           ${
             p.image_url
               ? `
-                <img
-                  src="${esc(p.image_url)}"
-                  alt="Current image"
-                  style="
-                    width:120px;
-                    height:120px;
-                    object-fit:cover;
-                    border-radius:12px;
-                    margin-top:10px
-                  "
-                >
-              `
-              : ''
-          }
+                <div style="margin-top:10px">
 
-          ${
-            p.image_url
-              ? `
-                <small style="
-                  display:block;
-                  color:#6b7280;
-                  margin-top:6px
-                ">
-                  Leave empty to keep the current image.
-                </small>
+                  <p style="
+                    margin:0 0 8px;
+                    color:#6b7280;
+                    font-size:14px
+                  ">
+                    Current image:
+                  </p>
+
+                  <img
+                    src="${esc(p.image_url)}"
+                    alt="Current product image"
+                    style="
+                      width:120px;
+                      height:120px;
+                      object-fit:cover;
+                      border-radius:12px
+                    "
+                  >
+
+                </div>
               `
               : ''
           }
@@ -2313,40 +2285,19 @@ function productForm(p = {}) {
    SAVE PRODUCT
 ========================= */
 
-async function saveProduct(
-  e,
-  id
-) {
+async function saveProduct(e, id) {
 
   e.preventDefault();
 
-  const imageInput =
-    document.getElementById('pi');
-
   const imageFile =
-    imageInput?.files?.[0] || null;
+    document.getElementById('pi')?.files?.[0];
 
-  let imageUrl = null;
-
-
-  /*
-   * If editing an existing product and
-   * no new image is selected, keep old image.
-   */
-
-  if (id) {
-
-    const existing =
-      products.find(p => p.id === id);
-
-    imageUrl =
-      existing?.image_url || null;
-  }
+  let imageUrl =
+    products.find(p => p.id === id)?.image_url ||
+    null;
 
 
-  /*
-   * Upload new image if selected.
-   */
+  /* Upload new image if selected */
 
   if (imageFile) {
 
@@ -2380,6 +2331,7 @@ async function saveProduct(
         'Image upload failed: ' +
         uploadError.message
       );
+
     }
 
 
@@ -2391,7 +2343,7 @@ async function saveProduct(
 
 
     imageUrl =
-      publicUrlData?.publicUrl || null;
+      publicUrlData.publicUrl;
   }
 
 
@@ -2401,19 +2353,16 @@ async function saveProduct(
       .trim();
 
 
-  const slug =
-    name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-|-$/g, '') +
-    (id ? '' : '-' + Date.now());
-
-
   const payload = {
 
     name,
 
-    slug,
+    slug:
+      name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '') +
+      (id ? '' : '-' + Date.now()),
 
     price:
       Number(
@@ -2434,48 +2383,46 @@ async function saveProduct(
       document.getElementById('pc').value,
 
     sku:
-      document.getElementById('pk')
-        .value
-        .trim() || null,
+      document.getElementById('pk').value.trim() ||
+      null,
 
     image_url:
       imageUrl,
 
     description:
-      document.getElementById('pd')
-        .value
-        .trim(),
+      document.getElementById('pd').value,
 
-    active: true
+    active:
+      true
   };
 
 
-  let result;
+  let q;
 
 
   if (id) {
 
-    result =
-      await sb
-        .from('products')
-        .update(payload)
-        .eq('id', id);
+    q = sb
+      .from('products')
+      .update(payload)
+      .eq('id', id);
 
   } else {
 
-    result =
-      await sb
-        .from('products')
-        .insert(payload);
+    q = sb
+      .from('products')
+      .insert(payload);
 
   }
 
 
-  if (result.error) {
+  const {
+    error
+  } = await q;
 
-    return toast(
-      result.error.message
-    );
+
+  if (error) {
+    return toast(error.message);
   }
 
 
@@ -2501,17 +2448,21 @@ async function deleteProduct(id) {
     return;
   }
 
-  const { error } =
-    await sb
-      .from('products')
-      .update({
-        active: false
-      })
-      .eq('id', id);
+
+  const {
+    error
+  } = await sb
+    .from('products')
+    .update({
+      active: false
+    })
+    .eq('id', id);
+
 
   if (error) {
     return toast(error.message);
   }
+
 
   toast('Product archived');
 
@@ -2520,47 +2471,33 @@ async function deleteProduct(id) {
 
 
 /* =========================
-   STORE SETTINGS
+   SETTINGS
 ========================= */
 
 async function saveSettings(e) {
 
   e.preventDefault();
 
-  const storeName =
-    document.getElementById('stn').value;
+  const {
+    error
+  } = await sb
+    .from('store_settings')
+    .update({
+      store_name:
+        document.getElementById('stn').value,
 
-  const adminEmail =
-    document.getElementById('ste').value;
+      admin_email:
+        document.getElementById('ste').value,
 
-  const whatsapp =
-    document.getElementById('stw').value;
+      whatsapp:
+        document.getElementById('stw').value,
 
-  const deliveryFee =
-    Number(
-      document.getElementById('std').value
-    );
-
-
-  const { error } =
-    await sb
-      .from('store_settings')
-      .update({
-
-        store_name:
-          storeName,
-
-        admin_email:
-          adminEmail,
-
-        whatsapp:
-          whatsapp,
-
-        delivery_fee:
-          deliveryFee
-
-      })
-      .eq('id', true);
+      delivery_fee:
+        Number(
+          document.getElementById('std').value
+        )
+    })
+    .eq('id', true);
 
 
   if (error) {
@@ -2572,16 +2509,18 @@ async function saveSettings(e) {
     ...settings,
 
     store_name:
-      storeName,
+      document.getElementById('stn').value,
 
     admin_email:
-      adminEmail,
+      document.getElementById('ste').value,
 
     whatsapp:
-      whatsapp,
+      document.getElementById('stw').value,
 
     delivery_fee:
-      deliveryFee
+      Number(
+        document.getElementById('std').value
+      )
   };
 
 
@@ -2598,7 +2537,6 @@ async function saveSettings(e) {
 function footer() {
 
   return `
-
     <footer class="footer">
 
       <div class="container">
@@ -2706,7 +2644,7 @@ function toast(t) {
     border-radius:10px;
     z-index:50;
     font-weight:700;
-    max-width:90vw;
+    max-width:90vw
   `;
 
   x.textContent = t;
@@ -2721,7 +2659,7 @@ function toast(t) {
 
 
 /* =========================
-   AUTH STATE
+   START
 ========================= */
 
 if (sb) {
@@ -2731,11 +2669,6 @@ if (sb) {
   );
 
 }
-
-
-/* =========================
-   START
-========================= */
 
 loadBase();
 ```
