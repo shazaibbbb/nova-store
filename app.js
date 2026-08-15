@@ -5,7 +5,7 @@ const sb=configured?supabase.createClient(cfg.SUPABASE_URL,cfg.SUPABASE_ANON_KEY
 const app=document.getElementById('app');
 window.addEventListener('error',e=>console.error('NOVA runtime error',e.error||e.message));
 window.addEventListener('unhandledrejection',e=>console.error('NOVA promise error',e.reason));
-let products=[],categories=[],settings={store_name:'NOVA',whatsapp:'',admin_email:'',delivery_fee:200};
+let products=[],categories=[],settings={   store_name:'NOVA',   whatsapp:'+923114129914',   instagram:'@bytemarketo',   admin_email:'',   delivery_fee:200 };
 let cart=JSON.parse(localStorage.getItem('nova_cart_v2')||'[]');
 let atab='dashboard';
 const money=n=>'Rs. '+Number(n||0).toLocaleString('en-PK');
