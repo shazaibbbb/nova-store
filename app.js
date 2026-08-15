@@ -2303,200 +2303,89 @@ async function setStatus(
    IMAGE UPLOAD DISABLED
 ========================= */
 
-function addProduct() {
-
-  modal(`
-    <button
-      class="close"
-      onclick="closeModal()"
-    >
-      ×
-    </button>
-
-    <h2>
-      Add Product
-    </h2>
-
-    ${productForm()}
-  `);
+function addProduct(){
+  modal(
+    `<button class="close" onclick="closeModal()">×</button>
+     <h2>Add Product</h2>
+     ${productForm()}`
+  );
 }
 
+function editProduct(id){
+  const p = products.find(x => x.id === id);
+  if(!p) return toast('Product not found');
 
-function editProduct(id) {
-
-  const p =
-    products.find(
-      (x) => x.id === id
-    );
-
-  if (!p) return;
-
-
-  modal(`
-    <button
-      class="close"
-      onclick="closeModal()"
-    >
-      ×
-    </button>
-
-    <h2>
-      Edit Product
-    </h2>
-
-    ${productForm(p)}
-  `);
+  modal(
+    `<button class="close" onclick="closeModal()">×</button>
+     <h2>Edit Product</h2>
+     ${productForm(p)}`
+  );
 }
 
-
-function productForm(p = {}) {
-
+function productForm(p = {}){
   return `
-    <form
-      onsubmit="saveProduct(event,'${p.id || ""}')"
-    >
+    <form onsubmit="saveProduct(event, '${p.id || ''}')">
 
       <div class="formgrid">
 
-
         <div class="full">
-
-          <label class="label">
-            Name
-          </label>
-
-          <input
-            class="input"
-            id="pn"
-            value="${esc(p.name || "")}"
-            required
-          >
-
+          <label class="label">Name</label>
+          <input class="input" id="pn"
+            value="${esc(p.name || '')}" required>
         </div>
 
-
         <div>
-
-          <label class="label">
-            Price
-          </label>
-
-          <input
-            class="input"
-            id="pp"
+          <label class="label">Price</label>
+          <input class="input" id="pp"
             type="number"
             step="0.01"
-            value="${p.price ?? ""}"
-            required
-          >
-
+            value="${p.price ?? ''}"
+            required>
         </div>
 
-
         <div>
-
-          <label class="label">
-            Old price
-          </label>
-
-          <input
-            class="input"
-            id="po"
+          <label class="label">Old price</label>
+          <input class="input" id="po"
             type="number"
             step="0.01"
-            value="${p.old_price ?? ""}"
-          >
-
+            value="${p.old_price ?? ''}">
         </div>
 
-
         <div>
-
-          <label class="label">
-            Stock
-          </label>
-
-          <input
-            class="input"
-            id="ps"
+          <label class="label">Stock</label>
+          <input class="input" id="ps"
             type="number"
             min="0"
             value="${p.stock ?? 0}"
-            required
-          >
-
+            required>
         </div>
 
-
         <div>
-
-          <label class="label">
-            Category
-          </label>
-
-          <select
-            class="select"
-            id="pc"
-          >
-
-            ${categories
-              .map(
-                (c) => `
-                  <option
-                    value="${c.id}"
-                    ${
-                      p.category_id === c.id
-                        ? "selected"
-                        : ""
-                    }
-                  >
-                    ${esc(c.name)}
-                  </option>
-                `
-              )
-              .join("")}
-
+          <label class="label">Category</label>
+          <select class="select" id="pc">
+            ${categories.map(c => `
+              <option value="${c.id}"
+                ${p.category_id === c.id ? 'selected' : ''}>
+                ${esc(c.name)}
+              </option>
+            `).join('')}
           </select>
-
         </div>
-
 
         <div>
-
-          <label class="label">
-            SKU
-          </label>
-
-          <input
-            class="input"
-            id="pk"
-            value="${esc(p.sku || "")}"
-          >
-
+          <label class="label">SKU</label>
+          <input class="input" id="pk"
+            value="${esc(p.sku || '')}">
         </div>
-
 
         <div class="full">
-
-          <label class="label">
-            Description
-          </label>
-
-          <textarea
-            id="pd"
-            rows="3"
-          >${esc(p.description || "")}</textarea>
-
+          <label class="label">Description</label>
+          <textarea id="pd" rows="3">${esc(p.description || '')}</textarea>
         </div>
-
 
       </div>
 
-
-      <button
-        class="btn"
-        style="margin-top:14px"
-      >
+      <button class="btn" style="margin-top:14px">
         Save Product
       </button>
 
@@ -2504,102 +2393,68 @@ function productForm(p = {}) {
   `;
 }
 
-
-/* =========================
-   SAVE PRODUCT
-========================= */
-
-async function saveProduct(
-  e,
-  id
-) {
-
+async function saveProduct(e, id){
   e.preventDefault();
 
+  const name = pn.value.trim();
 
-  const name =
-    document.getElementById("pn").value.trim();
-
+  if(!name){
+    return toast('Product name required');
+  }
 
   const payload = {
-
-    name,
+    name: name,
 
     slug:
       name
         .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-|-$/g, "") +
-      (id ? "" : "-" + Date.now()),
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '') +
+      (id ? '' : '-' + Date.now()),
 
-    price:
-      Number(
-        document.getElementById("pp").value
-      ),
+    price: Number(pp.value),
 
     old_price:
-      Number(
-        document.getElementById("po").value
-      ) || null,
+      Number(po.value) || null,
 
     stock:
-      Number(
-        document.getElementById("ps").value
-      ),
+      Number(ps.value),
 
     category_id:
-      document.getElementById("pc").value,
+      pc.value || null,
 
     sku:
-      document
-        .getElementById("pk")
-        .value
-        .trim() || null,
+      pk.value.trim() || null,
 
     description:
-      document.getElementById("pd").value,
+      pd.value || '',
 
     active: true
   };
 
-
   let result;
 
-
-  if (id) {
-
-    result =
-      await sb
-        .from("products")
-        .update(payload)
-        .eq("id", id);
-
-  } else {
-
-    result =
-      await sb
-        .from("products")
-        .insert(payload);
-
+  if(id){
+    result = await sb
+      .from('products')
+      .update(payload)
+      .eq('id', id);
+  }else{
+    result = await sb
+      .from('products')
+      .insert(payload);
   }
 
-
-  if (result.error) {
+  if(result.error){
     return toast(result.error.message);
   }
 
-
   closeModal();
 
-  toast("Product saved");
+  toast('Product saved');
 
-  adminRender();
+  await adminRender();
 }
-
-
-/* =========================
-   DELETE PRODUCT
-========================= */
 
 async function deleteProduct(id) {
 
