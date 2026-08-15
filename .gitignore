@@ -1,0 +1,13 @@
+# Local secrets / environment files
+.env
+.env.*
+!.env.example
+.DS_Store
+node_modules/
+.vercel/
+
+# Editor
+.vscode/
+.idea/
+
+store-old/
