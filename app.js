@@ -1,78 +1,2741 @@
+```javascript
 /* NOVA Phase 2 — Supabase-backed storefront */
-const cfg=window.NOVA_CONFIG||{};
-const configured=cfg.SUPABASE_URL && !cfg.SUPABASE_URL.includes('YOUR_') && cfg.SUPABASE_ANON_KEY && !cfg.SUPABASE_ANON_KEY.includes('YOUR_');
-const sb=configured?supabase.createClient(cfg.SUPABASE_URL,cfg.SUPABASE_ANON_KEY):null;
-const app=document.getElementById('app');
-window.addEventListener('error',e=>console.error('NOVA runtime error',e.error||e.message));
-window.addEventListener('unhandledrejection',e=>console.error('NOVA promise error',e.reason));
-let products=[],categories=[],settings={store_name:'NOVA',whatsapp:'',admin_email:'',delivery_fee:200};
-let cart=JSON.parse(localStorage.getItem('nova_cart_v2')||'[]');
-let atab='dashboard';
-const money=n=>'Rs. '+Number(n||0).toLocaleString('en-PK');
-const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
-const saveCart=()=>localStorage.setItem('nova_cart_v2',JSON.stringify(cart));
-async function user(){if(!sb)return null;const {data}=await sb.auth.getUser();return data.user||null}
-async function profile(){const u=await user();if(!u)return null;const {data}=await sb.from('profiles').select('*').eq('id',u.id).maybeSingle();return data}
-async function loadBase(){if(!sb){configScreen();return}const [p,c,s]=await Promise.all([sb.from('products').select('*,categories(name)').order('created_at',{ascending:false}),sb.from('categories').select('*').order('name'),sb.from('store_settings').select('*').eq('id',true).single()]);if(p.error||c.error||s.error){app.innerHTML=`<main class="container" style="padding:40px"><h2>Supabase error</h2><p>${esc(p.error?.message||c.error?.message||s.error?.message)}</p></main>`;return}products=p.data||[];categories=c.data||[];settings=s.data||settings;home()}
-function configScreen(){app.innerHTML=`<main class="container" style="padding:40px"><h1>NOVA Phase 2</h1><p>Connect Supabase first. Open <b>config.js</b> and replace the two placeholder values.</p><pre style="background:#111827;color:#fff;padding:18px;border-radius:12px;overflow:auto">window.NOVA_CONFIG={\n  SUPABASE_URL:'https://YOUR-PROJECT.supabase.co',\n  SUPABASE_ANON_KEY:'YOUR_ANON_KEY'\n};</pre><p>Then reload the page.</p></main>`}
-function nav(){return `<nav class="nav"><button class="brand" onclick="home()">${esc(settings.store_name)}<span>.</span></button><div class="navlinks"><button onclick="shop()">Shop</button><button onclick="openCart()">🛒<span class="badge">${cart.reduce((a,x)=>a+x.qty,0)}</span></button><button onclick="account()">👤</button><button onclick="admin()">⚙️</button></div></nav>`}
-function home(){const featured=products.filter(p=>p.featured&&p.active).slice(0,4);app.innerHTML=nav()+`<main class="container"><section class="hero"><div><div style="color:#93c5fd;font-weight:800;margin-bottom:12px">NEW SEASON · ${esc(settings.store_name)}</div><h1>Simple shopping.<br>Better choices.</h1><p>Real accounts, real orders and a secure checkout powered by Supabase.</p><button class="btn" onclick="shop()">Shop Now →</button></div></section><section class="section"><div class="sectionhead"><h2>Featured Products</h2><button class="btn secondary" onclick="shop()">View all</button></div><div class="grid">${featured.length?featured.map(card).join(''):`<div class="empty">No featured products yet.</div>`}</div></section></main>${footer()}`}
-function card(p){return `<article class="product"><div class="pic">${p.image_url?`<img src="${esc(p.image_url)}" alt="${esc(p.name)}" style="width:100%;height:100%;object-fit:cover;border-radius:18px">`:'📦'}</div><div class="body"><h3>${esc(p.name)}</h3><div><span class="price">${money(p.price)}</span>${p.old_price?` <span class="old">${money(p.old_price)}</span>`:''}</div><small style="color:#6b7280">${p.stock>0?p.stock+' in stock':'Out of stock'}</small><div class="actions"><button class="btn ghost" onclick="product('${p.id}')">View</button><button class="btn" ${p.stock<1?'disabled':''} onclick="add('${p.id}')">Add to cart</button></div></div></article>`}
-function shop(){app.innerHTML=nav()+`<main class="container"><section class="section"><div class="sectionhead"><div><h2>Shop</h2><p style="color:#6b7280">Browse products from the live database.</p></div></div><div class="toolbar"><input class="input" id="search" placeholder="Search products..." oninput="renderProducts()"><select class="select" id="cat" onchange="renderProducts()"><option value="all">All categories</option>${categories.map(c=>`<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('')}</select></div><div id="products" class="grid"></div></section></main>${footer()}`;renderProducts()}
-function renderProducts(){const q=(document.getElementById('search')?.value||'').toLowerCase(),c=document.getElementById('cat')?.value||'all';const ps=products.filter(p=>p.active&&(p.name.toLowerCase().includes(q)||p.description.toLowerCase().includes(q))&&(c==='all'||p.category_id===c));document.getElementById('products').innerHTML=ps.length?ps.map(card).join(''):`<div class="empty" style="grid-column:1/-1">No products found.</div>`}
-function product(id){const p=products.find(x=>x.id===id);if(!p)return;modal(`<button class="close" onclick="closeModal()">×</button>${p.image_url?`<img src="${esc(p.image_url)}" alt="" style="width:100%;max-height:320px;object-fit:cover;border-radius:18px">`:`<div style="font-size:80px;text-align:center;background:#eef2ff;border-radius:18px;padding:25px">📦</div>`}<h2>${esc(p.name)}</h2><p style="color:#6b7280">${esc(p.description)}</p><h2>${money(p.price)}</h2><p>${p.stock} available</p><button class="btn" ${p.stock<1?'disabled':''} onclick="add('${p.id}');closeModal();openCart()">Add to Cart</button>`)}
-function add(id){const p=products.find(x=>x.id===id);if(!p||p.stock<1)return toast('Out of stock');const item=cart.find(x=>x.id===id);if(item){if(item.qty>=p.stock)return toast('Maximum stock reached');item.qty++}else cart.push({id,qty:1});saveCart();toast('Added to cart');home()}
-function cartTotal(){return cart.reduce((s,x)=>s+(products.find(p=>p.id===x.id)?.price||0)*x.qty,0)}
-function openCart(){modal(`<button class="close" onclick="closeModal()">×</button><h2>Your Cart</h2>${cart.length?cart.map(x=>{const p=products.find(p=>p.id===x.id);return p?`<div class="cartrow"><div class="thumb">📦</div><div style="flex:1"><b>${esc(p.name)}</b><div>${money(p.price)} × ${x.qty}</div><div class="qty"><button onclick="changeQty('${p.id}',-1)">−</button><span>${x.qty}</span><button onclick="changeQty('${p.id}',1)">+</button><button onclick="removeCart('${p.id}')" style="margin-left:auto;color:#dc2626;background:none">Remove</button></div></div></div>`:''}).join('')+`<div class="total"><span>Subtotal</span><span>${money(cartTotal())}</span></div><div class="total"><span>Delivery</span><span>${money(settings.delivery_fee)}</span></div><div class="total"><b>Total</b><b>${money(cartTotal()+Number(settings.delivery_fee||0))}</b></div><button class="btn" style="width:100%" onclick="checkout()">Proceed to Checkout</button>`:`<div class="empty">Your cart is empty.</div>`}`)}
-function changeQty(id,d){const x=cart.find(i=>i.id===id),p=products.find(p=>p.id===id);if(!x||!p)return;x.qty+=d;if(x.qty<1)cart=cart.filter(i=>i.id!==id);if(x.qty>p.stock)x.qty=p.stock;saveCart();openCart()}
-function removeCart(id){cart=cart.filter(i=>i.id!==id);saveCart();openCart()}
-async function account(){const u=await user();if(!u)return login();const pr=await profile();modal(`<button class="close" onclick="closeModal()">×</button><h2>My Account</h2><p><b>${esc(pr?.full_name||u.email)}</b><br>${esc(u.email)}<br>${esc(pr?.phone||'')}</p><button class="btn" onclick="myOrders()">My Orders</button> <button class="btn ghost" onclick="sb.auth.signOut();closeModal();home()">Logout</button>`)}
-function login(){modal(`<button class="close" onclick="closeModal()">×</button><h2>Login</h2><form onsubmit="doLogin(event)"><label class="label">Email</label><input class="input" id="le" required type="email"><label class="label">Password</label><input class="input" id="lp" required type="password"><button class="btn" style="margin-top:14px">Login</button></form><p>New here? <button style="background:none;color:#2563eb" onclick="signup()">Create account</button></p><p><button style="background:none;color:#2563eb" onclick="forgotPassword()">Forgot password?</button></p>`)}
-async function doLogin(e){e.preventDefault();const {error}=await sb.auth.signInWithPassword({email:le.value,password:lp.value});if(error)return toast(error.message);closeModal();toast('Welcome back');home()}
-function signup(){modal(`<button class="close" onclick="closeModal()">×</button><h2>Create account</h2><form onsubmit="doSignup(event)"><div class="formgrid"><div><label class="label">Full name</label><input class="input" id="sn" required></div><div><label class="label">Phone</label><input class="input" id="sp"></div><div class="full"><label class="label">Email</label><input class="input" id="se" required type="email"></div><div><label class="label">Password</label><input class="input" id="sx" required type="password" minlength="6"></div><div><label class="label">Confirm password</label><input class="input" id="sy" required type="password" minlength="6"></div></div><button class="btn" style="margin-top:14px">Sign up</button></form>`)}
-async function doSignup(e){e.preventDefault();if(sx.value!==sy.value)return toast('Passwords do not match');const {data,error}=await sb.auth.signUp({email:se.value,password:sx.value,options:{data:{full_name:sn.value,phone:sp.value}}});if(error)return toast(error.message);closeModal();toast(data.session?'Account created':'Check your email to confirm your account')}
-async function forgotPassword(){const email=prompt('Enter your account email');if(!email)return;const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:location.href});toast(error?error.message:'Password reset email sent')}
-async function checkout(){if(!cart.length)return toast('Cart is empty');const u=await user();if(!u){closeModal();login();return}const pr=await profile();modal(`<button class="close" onclick="closeModal()">×</button><h2>Checkout</h2><form onsubmit="placeOrder(event)"><div class="formgrid"><div><label class="label">Full name</label><input class="input" id="cn" value="${esc(pr?.full_name||'')}" required></div><div><label class="label">Phone</label><input class="input" id="cp" value="${esc(pr?.phone||'')}" required></div><div class="full"><label class="label">Email</label><input class="input" id="ce" value="${esc(u.email||'')}" required type="email"></div><div><label class="label">City</label><input class="input" id="cc" required></div><div><label class="label">Postal code</label><input class="input" id="cz"></div><div class="full"><label class="label">Complete delivery address</label><textarea id="ca" rows="3" required></textarea></div><div class="full"><label class="label">Delivery instructions (optional)</label><textarea id="ci" rows="2"></textarea></div></div><div class="total"><span>Total</span><span>${money(cartTotal()+Number(settings.delivery_fee||0))}</span></div><div class="notice">Payment method: Cash on Delivery</div><button class="btn" style="width:100%">Place Order</button></form>`)}
-async function placeOrder(e){e.preventDefault();const items=cart.map(x=>({product_id:x.id,quantity:x.qty}));const {data,error}=await sb.rpc('place_order',{p_customer_name:cn.value,p_customer_phone:cp.value,p_customer_email:ce.value,p_delivery_address:ca.value,p_city:cc.value,p_postal_code:cz.value||'',p_instructions:ci.value||'',p_delivery_fee:Number(settings.delivery_fee||0),p_items:items});if(error)return toast(error.message);cart=[];saveCart();closeModal();orderConfirmation(data);try{const {data:sessionData}=await sb.auth.getSession();const token=sessionData.session?.access_token;if(token){await fetch(`${cfg.SUPABASE_URL}/functions/v1/send-order-notifications`,{method:'POST',headers:{Authorization:`Bearer ${token}`,apikey:cfg.SUPABASE_ANON_KEY,'Content-Type':'application/json'},body:JSON.stringify({order_id:data.id})})}}catch(err){console.warn('Notification dispatch failed',err)}}
-function orderConfirmation(o){const msg=encodeURIComponent(`NEW ORDER ${o.order_number}\nCustomer: ${o.customer_name}\nPhone: ${o.customer_phone}\nAddress: ${o.delivery_address}, ${o.city}\nTotal: ${money(o.total)}\nPayment: COD`);modal(`<div style="text-align:center"><div style="font-size:58px">✅</div><h2>Order placed!</h2><p>Your order <b>${esc(o.order_number)}</b> has been received.</p><p style="color:#6b7280">The real order is now stored in Supabase and stock has been reduced atomically.</p>${settings.whatsapp?`<a class="btn" style="display:inline-block;text-decoration:none" target="_blank" href="https://wa.me/${encodeURIComponent(settings.whatsapp)}?text=${msg}">Open WhatsApp</a>`:''}<br><br><button class="btn ghost" onclick="closeModal();home()">Continue Shopping</button></div>`)}
-async function myOrders(){const u=await user();if(!u)return;const {data,error}=await sb.from('orders').select('*,order_items(*)').eq('user_id',u.id).order('created_at',{ascending:false});if(error)return toast(error.message);modal(`<button class="close" onclick="closeModal()">×</button><h2>My Orders</h2>${data?.length?data.map(o=>`<div class="cartrow"><div style="flex:1"><b>${esc(o.order_number)}</b><div>${new Date(o.created_at).toLocaleString()}</div><div>${money(o.total)}</div></div><span class="status">${esc(o.status)}</span></div>`).join(''):'<div class="empty">No orders yet.</div>'}`)}
-async function admin(){const pr=await profile();if(!pr||pr.role!=='admin')return toast('Admin access required');await adminRender()}
-async function adminRender(){const [ps,os,cs]=await Promise.all([sb.from('products').select('*,categories(name)').order('created_at',{ascending:false}),sb.from('orders').select('*,order_items(*)').order('created_at',{ascending:false}),sb.from('profiles').select('*').order('created_at',{ascending:false})]);if(ps.error||os.error||cs.error)return toast(ps.error?.message||os.error?.message||cs.error?.message);products=ps.data||[];const orders=os.data||[],customers=cs.data||[];app.innerHTML=`<nav class="nav"><button class="brand" onclick="home()">${esc(settings.store_name)}<span>.</span></button><button class="btn ghost" onclick="home()">Exit Admin</button></nav><main class="container admin"><h1>Admin Dashboard</h1><div class="adminnav">${['dashboard','products','orders','customers','settings'].map(x=>`<button class="${atab===x?'active':''}" onclick="atab='${x}';adminRender()">${x[0].toUpperCase()+x.slice(1)}</button>`).join('')}</div>${adminContent(orders,customers)}</main>`}
-function adminContent(orders,customers){if(atab==='dashboard')return `<div class="cards"><div class="stat">Orders<b>${orders.length}</b></div><div class="stat">Customers<b>${customers.filter(x=>x.role==='customer').length}</b></div><div class="stat">Products<b>${products.length}</b></div><div class="stat">Sales<b>${money(orders.reduce((a,o)=>a+Number(o.total),0))}</b></div></div><section class="section"><h2>Recent Orders</h2>${orderTable(orders.slice(0,10))}</section>`;if(atab==='products')return `<div class="sectionhead"><h2>Products</h2><button class="btn" onclick="addProduct()">+ Add Product</button></div>${productTable()}`;if(atab==='orders')return `<h2>Orders</h2>${orderTable(orders)}`;if(atab==='customers')return `<h2>Customers</h2><div class="tablewrap"><table class="table"><tr><th>Name</th><th>Email</th><th>Phone</th><th>Role</th></tr>${customers.filter(u=>u.role==='customer').map(u=>`<tr><td>${esc(u.full_name)}</td><td>${esc(u.id)}</td><td>${esc(u.phone)}</td><td>${esc(u.role)}</td></tr>`).join('')}</table></div>`;return `<h2>Store Settings</h2><form onsubmit="saveSettings(event)" style="max-width:600px"><label class="label">Store name</label><input class="input" id="stn" value="${esc(settings.store_name)}"><label class="label">Admin email</label><input class="input" id="ste" value="${esc(settings.admin_email)}" type="email"><label class="label">WhatsApp number (international, no +)</label><input class="input" id="stw" value="${esc(settings.whatsapp)}"><label class="label">Delivery fee</label><input class="input" id="std" value="${settings.delivery_fee}" type="number"><button class="btn" style="margin-top:14px">Save Settings</button></form>`}
-function productTable(){return `<div class="tablewrap"><table class="table"><tr><th>Product</th><th>Price</th><th>Stock</th><th>Category</th><th>Action</th></tr>${products.map(p=>`<tr><td>${esc(p.name)}</td><td>${money(p.price)}</td><td>${p.stock}</td><td>${esc(p.categories?.name||'')}</td><td><button onclick="editProduct('${p.id}')">Edit</button> <button onclick="deleteProduct('${p.id}')" style="color:#dc2626">Delete</button></td></tr>`).join('')}</table></div>`}
-function orderTable(os){return `<div class="tablewrap"><table class="table"><tr><th>Order</th><th>Customer</th><th>Total</th><th>Status</th><th>Action</th></tr>${os.map(o=>`<tr><td>${esc(o.order_number)}</td><td>${esc(o.customer_name)}</td><td>${money(o.total)}</td><td><span class="status">${esc(o.status)}</span></td><td><select onchange="setStatus('${o.id}',this.value)">${['pending','confirmed','processing','shipped','delivered','cancelled'].map(s=>`<option ${s===o.status?'selected':''}>${s}</option>`).join('')}</select></td></tr>`).join('')}</table></div>`}
-async function setStatus(id,status){const {data:old}=await sb.from('orders').select('status').eq('id',id).single();const {error}=await sb.from('orders').update({status}).eq('id',id);if(error)return toast(error.message);await sb.from('order_status_history').insert({order_id:id,old_status:old?.status,new_status:status,changed_by:(await user()).id});toast('Order updated');adminRender()}
-function addProduct(){modal(`<button class="close" onclick="closeModal()">×</button><h2>Add Product</h2>${productForm()}`)}
-function editProduct(id){const p=products.find(x=>x.id===id);modal(`<button class="close" onclick="closeModal()">×</button><h2>Edit Product</h2>${productForm(p)}`)}
-function productForm(p={}){return `<form onsubmit="saveProduct(event,'${p.id||''}')"><div class="formgrid"><div class="full"><label class="label">Name</label><input class="input" id="pn" value="${esc(p.name||'')}" required></div><div><label class="label">Price</label><input class="input" id="pp" type="number" step="0.01" value="${p.price??''}" required></div><div><label class="label">Old price</label><input class="input" id="po" type="number" step="0.01" value="${p.old_price??''}"></div><div><label class="label">Stock</label><input class="input" id="ps" type="number" min="0" value="${p.stock??0}" required></div><div><label class="label">Category</label><select class="select" id="pc">${categories.map(c=>`<option value="${c.id}" ${p.category_id===c.id?'selected':''}>${esc(c.name)}</option>`).join('')}</select></div><div><label class="label">SKU</label><input class="input" id="pk" value="${esc(p.sku||'')}"></div><div class="full"><div class="full">   <label class="label">Product Image</label>
-let imageUrl = null;
 
-if (imageFile) {
-    const fileExt = imageFile.name.split(".").pop();
-    const fileName = `${crypto.randomUUID()}.${fileExt}`;
+const cfg = window.NOVA_CONFIG || {};
 
-    const { error: uploadError } = await sb.storage
-        .from("products")
-        .upload(fileName, imageFile, {
-            cacheControl: "3600",
-            upsert: false,
-        });
+const configured =
+  cfg.SUPABASE_URL &&
+  !cfg.SUPABASE_URL.includes('YOUR_') &&
+  cfg.SUPABASE_ANON_KEY &&
+  !cfg.SUPABASE_ANON_KEY.includes('YOUR_');
 
-    if (uploadError) {
-        return toast("Image upload failed: " + uploadError.message);
+const sb = configured
+  ? supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY)
+  : null;
+
+const app = document.getElementById('app');
+
+window.addEventListener('error', e => {
+  console.error('NOVA runtime error:', e.error || e.message);
+});
+
+window.addEventListener('unhandledrejection', e => {
+  console.error('NOVA promise error:', e.reason);
+});
+
+let products = [];
+let categories = [];
+
+let settings = {
+  store_name: 'NOVA',
+  whatsapp: '',
+  admin_email: '',
+  delivery_fee: 200
+};
+
+let cart = JSON.parse(localStorage.getItem('nova_cart_v2') || '[]');
+
+let atab = 'dashboard';
+
+const money = n =>
+  'Rs. ' + Number(n || 0).toLocaleString('en-PK');
+
+const esc = s =>
+  String(s ?? '').replace(/[&<>"']/g, m => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;'
+  }[m]));
+
+const saveCart = () =>
+  localStorage.setItem('nova_cart_v2', JSON.stringify(cart));
+
+
+/* =========================
+   AUTH
+========================= */
+
+async function user() {
+  if (!sb) return null;
+
+  const { data } = await sb.auth.getUser();
+
+  return data.user || null;
+}
+
+
+async function profile() {
+  const u = await user();
+
+  if (!u) return null;
+
+  const { data } = await sb
+    .from('profiles')
+    .select('*')
+    .eq('id', u.id)
+    .maybeSingle();
+
+  return data;
+}
+
+
+/* =========================
+   INITIAL LOAD
+========================= */
+
+async function loadBase() {
+
+  if (!sb) {
+    configScreen();
+    return;
+  }
+
+  const [p, c, s] = await Promise.all([
+
+    sb
+      .from('products')
+      .select('*,categories(name)')
+      .order('created_at', { ascending: false }),
+
+    sb
+      .from('categories')
+      .select('*')
+      .order('name'),
+
+    sb
+      .from('store_settings')
+      .select('*')
+      .eq('id', true)
+      .single()
+
+  ]);
+
+  if (p.error || c.error || s.error) {
+
+    app.innerHTML = `
+      <main class="container" style="padding:40px">
+        <h2>Supabase error</h2>
+        <p>${esc(
+          p.error?.message ||
+          c.error?.message ||
+          s.error?.message
+        )}</p>
+      </main>
+    `;
+
+    return;
+  }
+
+  products = p.data || [];
+  categories = c.data || [];
+  settings = s.data || settings;
+
+  home();
+}
+
+
+/* =========================
+   CONFIG SCREEN
+========================= */
+
+function configScreen() {
+
+  app.innerHTML = `
+    <main class="container" style="padding:40px">
+
+      <h1>NOVA Phase 2</h1>
+
+      <p>
+        Connect Supabase first.
+        Open <b>config.js</b> and replace the two placeholder values.
+      </p>
+
+      <pre style="
+        background:#111827;
+        color:#fff;
+        padding:18px;
+        border-radius:12px;
+        overflow:auto;
+      ">window.NOVA_CONFIG={
+  SUPABASE_URL:'https://YOUR-PROJECT.supabase.co',
+  SUPABASE_ANON_KEY:'YOUR_ANON_KEY'
+};</pre>
+
+      <p>Then reload the page.</p>
+
+    </main>
+  `;
+}
+
+
+/* =========================
+   NAVIGATION
+========================= */
+
+function nav() {
+
+  return `
+    <nav class="nav">
+
+      <button class="brand" onclick="home()">
+        ${esc(settings.store_name)}
+        <span>.</span>
+      </button>
+
+      <div class="navlinks">
+
+        <button onclick="shop()">
+          Shop
+        </button>
+
+        <button onclick="openCart()">
+          🛒
+          <span class="badge">
+            ${cart.reduce((a, x) => a + x.qty, 0)}
+          </span>
+        </button>
+
+        <button onclick="account()">
+          👤
+        </button>
+
+        <button onclick="admin()">
+          ⚙️
+        </button>
+
+      </div>
+
+    </nav>
+  `;
+}
+
+
+/* =========================
+   HOME
+========================= */
+
+function home() {
+
+  const featured = products
+    .filter(p => p.featured && p.active)
+    .slice(0, 4);
+
+  app.innerHTML =
+    nav() +
+    `
+      <main class="container">
+
+        <section class="hero">
+
+          <div>
+
+            <div style="
+              color:#93c5fd;
+              font-weight:800;
+              margin-bottom:12px
+            ">
+              NEW SEASON · ${esc(settings.store_name)}
+            </div>
+
+            <h1>
+              Simple shopping.<br>
+              Better choices.
+            </h1>
+
+            <p>
+              Real accounts, real orders and a secure checkout
+              powered by Supabase.
+            </p>
+
+            <button class="btn" onclick="shop()">
+              Shop Now →
+            </button>
+
+          </div>
+
+        </section>
+
+        <section class="section">
+
+          <div class="sectionhead">
+
+            <h2>Featured Products</h2>
+
+            <button class="btn secondary" onclick="shop()">
+              View all
+            </button>
+
+          </div>
+
+          <div class="grid">
+
+            ${
+              featured.length
+                ? featured.map(card).join('')
+                : `<div class="empty">
+                    No featured products yet.
+                   </div>`
+            }
+
+          </div>
+
+        </section>
+
+      </main>
+
+      ${footer()}
+    `;
+}
+
+
+/* =========================
+   PRODUCT CARD
+========================= */
+
+function card(p) {
+
+  return `
+    <article class="product">
+
+      <div class="pic">
+
+        ${
+          p.image_url
+            ? `
+              <img
+                src="${esc(p.image_url)}"
+                alt="${esc(p.name)}"
+                style="
+                  width:100%;
+                  height:100%;
+                  object-fit:cover;
+                  border-radius:18px
+                "
+              >
+            `
+            : '📦'
+        }
+
+      </div>
+
+      <div class="body">
+
+        <h3>${esc(p.name)}</h3>
+
+        <div>
+
+          <span class="price">
+            ${money(p.price)}
+          </span>
+
+          ${
+            p.old_price
+              ? `
+                <span class="old">
+                  ${money(p.old_price)}
+                </span>
+              `
+              : ''
+          }
+
+        </div>
+
+        <small style="color:#6b7280">
+          ${
+            p.stock > 0
+              ? p.stock + ' in stock'
+              : 'Out of stock'
+          }
+        </small>
+
+        <div class="actions">
+
+          <button
+            class="btn ghost"
+            onclick="product('${p.id}')"
+          >
+            View
+          </button>
+
+          <button
+            class="btn"
+            ${p.stock < 1 ? 'disabled' : ''}
+            onclick="add('${p.id}')"
+          >
+            Add to cart
+          </button>
+
+        </div>
+
+      </div>
+
+    </article>
+  `;
+}
+
+
+/* =========================
+   SHOP
+========================= */
+
+function shop() {
+
+  app.innerHTML =
+    nav() +
+    `
+      <main class="container">
+
+        <section class="section">
+
+          <div class="sectionhead">
+
+            <div>
+
+              <h2>Shop</h2>
+
+              <p style="color:#6b7280">
+                Browse products from the live database.
+              </p>
+
+            </div>
+
+          </div>
+
+          <div class="toolbar">
+
+            <input
+              class="input"
+              id="search"
+              placeholder="Search products..."
+              oninput="renderProducts()"
+            >
+
+            <select
+              class="select"
+              id="cat"
+              onchange="renderProducts()"
+            >
+
+              <option value="all">
+                All categories
+              </option>
+
+              ${
+                categories
+                  .map(c => `
+                    <option value="${esc(c.id)}">
+                      ${esc(c.name)}
+                    </option>
+                  `)
+                  .join('')
+              }
+
+            </select>
+
+          </div>
+
+          <div
+            id="products"
+            class="grid"
+          ></div>
+
+        </section>
+
+      </main>
+
+      ${footer()}
+    `;
+
+  renderProducts();
+}
+
+
+function renderProducts() {
+
+  const q =
+    (document.getElementById('search')?.value || '')
+      .toLowerCase();
+
+  const c =
+    document.getElementById('cat')?.value || 'all';
+
+  const ps = products.filter(p => {
+
+    const name =
+      String(p.name || '').toLowerCase();
+
+    const description =
+      String(p.description || '').toLowerCase();
+
+    return (
+      p.active &&
+      (name.includes(q) || description.includes(q)) &&
+      (c === 'all' || p.category_id === c)
+    );
+  });
+
+  const target =
+    document.getElementById('products');
+
+  if (!target) return;
+
+  target.innerHTML =
+    ps.length
+      ? ps.map(card).join('')
+      : `
+        <div
+          class="empty"
+          style="grid-column:1/-1"
+        >
+          No products found.
+        </div>
+      `;
+}
+
+
+/* =========================
+   PRODUCT DETAILS
+========================= */
+
+function product(id) {
+
+  const p = products.find(x => x.id === id);
+
+  if (!p) return;
+
+  modal(`
+    <button
+      class="close"
+      onclick="closeModal()"
+    >
+      ×
+    </button>
+
+    ${
+      p.image_url
+        ? `
+          <img
+            src="${esc(p.image_url)}"
+            alt="${esc(p.name)}"
+            style="
+              width:100%;
+              max-height:320px;
+              object-fit:cover;
+              border-radius:18px
+            "
+          >
+        `
+        : `
+          <div style="
+            font-size:80px;
+            text-align:center;
+            background:#eef2ff;
+            border-radius:18px;
+            padding:25px
+          ">
+            📦
+          </div>
+        `
     }
 
-    const { data: publicUrlData } = sb.storage
-        .from("products")
-        .getPublicUrl(fileName);
+    <h2>${esc(p.name)}</h2>
 
-    imageUrl = publicUrlData.publicUrl;
-}const name=pn.value.trim();const payload={     name,     slug:name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')+(id?'':'-'+Date.now()),     price:Number(pp.value),     old_price:Number(po.value)||null,     stock:Number(ps.value),     category_id:pc.value,     sku:pk.value.trim()||null,     image_url:imageUrl,     description:pd.value,     active:true };const q=id?sb.from('products').update(payload).eq('id',id):sb.from('products').insert(payload);const {error}=await q;if(error)return toast(error.message);closeModal();toast('Product saved');adminRender()}
-async function deleteProduct(id){if(!confirm('Delete this product?'))return;const {error}=await sb.from('products').update({active:false}).eq('id',id);if(error)return toast(error.message);toast('Product archived');adminRender()}
-async function saveSettings(e){e.preventDefault();const {error}=await sb.from('store_settings').update({store_name:stn.value,admin_email:ste.value,whatsapp:stw.value,delivery_fee:Number(std.value)}).eq('id',true);if(error)return toast(error.message);settings={...settings,store_name:stn.value,admin_email:ste.value,whatsapp:stw.value,delivery_fee:Number(std.value)};toast('Settings saved');adminRender()}
-function footer(){return `<footer class="footer"><div class="container"><strong>${esc(settings.store_name)}</strong><p>Modern shopping, made simple.</p><p><a href="/privacy.html" style="color:#cbd5e1">Privacy</a> · <a href="/terms.html" style="color:#cbd5e1">Terms</a> · <a href="/shipping-returns.html" style="color:#cbd5e1">Shipping & Returns</a></p><small>© ${new Date().getFullYear()} ${esc(settings.store_name)}. All rights reserved.</small></div></footer>`}
-function modal(html){closeModal();const m=document.createElement('div');m.className='modal';m.id='modal';m.innerHTML=`<div class="panel">${html}</div>`;document.body.appendChild(m)}
-function closeModal(){document.getElementById('modal')?.remove()}
-function toast(t){const x=document.createElement('div');x.style='position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:#111827;color:#fff;padding:12px 18px;border-radius:10px;z-index:50;font-weight:700;max-width:90vw';x.textContent=t;document.body.appendChild(x);setTimeout(()=>x.remove(),2600)}
-if(sb)sb.auth.onAuthStateChange(()=>{});
+    <p style="color:#6b7280">
+      ${esc(p.description || '')}
+    </p>
+
+    <h2>
+      ${money(p.price)}
+    </h2>
+
+    <p>
+      ${p.stock} available
+    </p>
+
+    <button
+      class="btn"
+      ${p.stock < 1 ? 'disabled' : ''}
+      onclick="add('${p.id}');closeModal();openCart()"
+    >
+      Add to Cart
+    </button>
+  `);
+}
+
+
+/* =========================
+   CART
+========================= */
+
+function add(id) {
+
+  const p = products.find(x => x.id === id);
+
+  if (!p || p.stock < 1) {
+    return toast('Out of stock');
+  }
+
+  const item = cart.find(x => x.id === id);
+
+  if (item) {
+
+    if (item.qty >= p.stock) {
+      return toast('Maximum stock reached');
+    }
+
+    item.qty++;
+
+  } else {
+
+    cart.push({
+      id,
+      qty: 1
+    });
+
+  }
+
+  saveCart();
+
+  toast('Added to cart');
+
+  home();
+}
+
+
+function cartTotal() {
+
+  return cart.reduce(
+    (s, x) =>
+      s +
+      (products.find(p => p.id === x.id)?.price || 0) *
+      x.qty,
+    0
+  );
+}
+
+
+function openCart() {
+
+  modal(`
+    <button
+      class="close"
+      onclick="closeModal()"
+    >
+      ×
+    </button>
+
+    <h2>Your Cart</h2>
+
+    ${
+      cart.length
+        ? `
+          ${cart.map(x => {
+
+            const p =
+              products.find(p => p.id === x.id);
+
+            if (!p) return '';
+
+            return `
+              <div class="cartrow">
+
+                <div class="thumb">
+                  ${
+                    p.image_url
+                      ? `
+                        <img
+                          src="${esc(p.image_url)}"
+                          style="
+                            width:100%;
+                            height:100%;
+                            object-fit:cover;
+                            border-radius:10px
+                          "
+                        >
+                      `
+                      : '📦'
+                  }
+                </div>
+
+                <div style="flex:1">
+
+                  <b>${esc(p.name)}</b>
+
+                  <div>
+                    ${money(p.price)} × ${x.qty}
+                  </div>
+
+                  <div class="qty">
+
+                    <button
+                      onclick="changeQty('${p.id}',-1)"
+                    >
+                      −
+                    </button>
+
+                    <span>${x.qty}</span>
+
+                    <button
+                      onclick="changeQty('${p.id}',1)"
+                    >
+                      +
+                    </button>
+
+                    <button
+                      onclick="removeCart('${p.id}')"
+                      style="
+                        margin-left:auto;
+                        color:#dc2626;
+                        background:none
+                      "
+                    >
+                      Remove
+                    </button>
+
+                  </div>
+
+                </div>
+
+              </div>
+            `;
+
+          }).join('')}
+
+          <div class="total">
+            <span>Subtotal</span>
+            <span>${money(cartTotal())}</span>
+          </div>
+
+          <div class="total">
+            <span>Delivery</span>
+            <span>
+              ${money(settings.delivery_fee)}
+            </span>
+          </div>
+
+          <div class="total">
+            <b>Total</b>
+            <b>
+              ${money(
+                cartTotal() +
+                Number(settings.delivery_fee || 0)
+              )}
+            </b>
+          </div>
+
+          <button
+            class="btn"
+            style="width:100%"
+            onclick="checkout()"
+          >
+            Proceed to Checkout
+          </button>
+        `
+        : `
+          <div class="empty">
+            Your cart is empty.
+          </div>
+        `
+    }
+  `);
+}
+
+
+function changeQty(id, d) {
+
+  const x =
+    cart.find(i => i.id === id);
+
+  const p =
+    products.find(p => p.id === id);
+
+  if (!x || !p) return;
+
+  x.qty += d;
+
+  if (x.qty < 1) {
+    cart = cart.filter(i => i.id !== id);
+  }
+
+  if (x.qty > p.stock) {
+    x.qty = p.stock;
+  }
+
+  saveCart();
+
+  openCart();
+}
+
+
+function removeCart(id) {
+
+  cart =
+    cart.filter(i => i.id !== id);
+
+  saveCart();
+
+  openCart();
+}
+
+
+/* =========================
+   ACCOUNT
+========================= */
+
+async function account() {
+
+  const u = await user();
+
+  if (!u) {
+    login();
+    return;
+  }
+
+  const pr = await profile();
+
+  modal(`
+    <button
+      class="close"
+      onclick="closeModal()"
+    >
+      ×
+    </button>
+
+    <h2>My Account</h2>
+
+    <p>
+      <b>
+        ${esc(pr?.full_name || u.email)}
+      </b>
+      <br>
+      ${esc(u.email)}
+      <br>
+      ${esc(pr?.phone || '')}
+    </p>
+
+    <button
+      class="btn"
+      onclick="myOrders()"
+    >
+      My Orders
+    </button>
+
+    <button
+      class="btn ghost"
+      onclick="sb.auth.signOut();closeModal();home()"
+    >
+      Logout
+    </button>
+  `);
+}
+
+
+function login() {
+
+  modal(`
+    <button
+      class="close"
+      onclick="closeModal()"
+    >
+      ×
+    </button>
+
+    <h2>Login</h2>
+
+    <form onsubmit="doLogin(event)">
+
+      <label class="label">
+        Email
+      </label>
+
+      <input
+        class="input"
+        id="le"
+        required
+        type="email"
+      >
+
+      <label class="label">
+        Password
+      </label>
+
+      <input
+        class="input"
+        id="lp"
+        required
+        type="password"
+      >
+
+      <button
+        class="btn"
+        style="margin-top:14px"
+      >
+        Login
+      </button>
+
+    </form>
+
+    <p>
+      New here?
+
+      <button
+        style="
+          background:none;
+          color:#2563eb
+        "
+        onclick="signup()"
+      >
+        Create account
+      </button>
+    </p>
+
+    <p>
+      <button
+        style="
+          background:none;
+          color:#2563eb
+        "
+        onclick="forgotPassword()"
+      >
+        Forgot password?
+      </button>
+    </p>
+  `);
+}
+
+
+async function doLogin(e) {
+
+  e.preventDefault();
+
+  const { error } =
+    await sb.auth.signInWithPassword({
+      email: document.getElementById('le').value,
+      password: document.getElementById('lp').value
+    });
+
+  if (error) {
+    return toast(error.message);
+  }
+
+  closeModal();
+
+  toast('Welcome back');
+
+  home();
+}
+
+
+function signup() {
+
+  modal(`
+    <button
+      class="close"
+      onclick="closeModal()"
+    >
+      ×
+    </button>
+
+    <h2>Create account</h2>
+
+    <form onsubmit="doSignup(event)">
+
+      <div class="formgrid">
+
+        <div>
+          <label class="label">
+            Full name
+          </label>
+
+          <input
+            class="input"
+            id="sn"
+            required
+          >
+        </div>
+
+        <div>
+          <label class="label">
+            Phone
+          </label>
+
+          <input
+            class="input"
+            id="sp"
+          >
+        </div>
+
+        <div class="full">
+
+          <label class="label">
+            Email
+          </label>
+
+          <input
+            class="input"
+            id="se"
+            required
+            type="email"
+          >
+
+        </div>
+
+        <div>
+
+          <label class="label">
+            Password
+          </label>
+
+          <input
+            class="input"
+            id="sx"
+            required
+            type="password"
+            minlength="6"
+          >
+
+        </div>
+
+        <div>
+
+          <label class="label">
+            Confirm password
+          </label>
+
+          <input
+            class="input"
+            id="sy"
+            required
+            type="password"
+            minlength="6"
+          >
+
+        </div>
+
+      </div>
+
+      <button
+        class="btn"
+        style="margin-top:14px"
+      >
+        Sign up
+      </button>
+
+    </form>
+  `);
+}
+
+
+async function doSignup(e) {
+
+  e.preventDefault();
+
+  const password =
+    document.getElementById('sx').value;
+
+  const confirmPassword =
+    document.getElementById('sy').value;
+
+  if (password !== confirmPassword) {
+    return toast('Passwords do not match');
+  }
+
+  const { data, error } =
+    await sb.auth.signUp({
+
+      email:
+        document.getElementById('se').value,
+
+      password,
+
+      options: {
+        data: {
+          full_name:
+            document.getElementById('sn').value,
+
+          phone:
+            document.getElementById('sp').value
+        }
+      }
+
+    });
+
+  if (error) {
+    return toast(error.message);
+  }
+
+  closeModal();
+
+  toast(
+    data.session
+      ? 'Account created'
+      : 'Check your email to confirm your account'
+  );
+}
+
+
+async function forgotPassword() {
+
+  const email =
+    prompt('Enter your account email');
+
+  if (!email) return;
+
+  const { error } =
+    await sb.auth.resetPasswordForEmail(
+      email,
+      {
+        redirectTo: location.href
+      }
+    );
+
+  toast(
+    error
+      ? error.message
+      : 'Password reset email sent'
+  );
+}
+
+
+/* =========================
+   CHECKOUT
+========================= */
+
+async function checkout() {
+
+  if (!cart.length) {
+    return toast('Cart is empty');
+  }
+
+  const u = await user();
+
+  if (!u) {
+    closeModal();
+    login();
+    return;
+  }
+
+  const pr = await profile();
+
+  modal(`
+    <button
+      class="close"
+      onclick="closeModal()"
+    >
+      ×
+    </button>
+
+    <h2>Checkout</h2>
+
+    <form onsubmit="placeOrder(event)">
+
+      <div class="formgrid">
+
+        <div>
+
+          <label class="label">
+            Full name
+          </label>
+
+          <input
+            class="input"
+            id="cn"
+            value="${esc(pr?.full_name || '')}"
+            required
+          >
+
+        </div>
+
+        <div>
+
+          <label class="label">
+            Phone
+          </label>
+
+          <input
+            class="input"
+            id="cp"
+            value="${esc(pr?.phone || '')}"
+            required
+          >
+
+        </div>
+
+        <div class="full">
+
+          <label class="label">
+            Email
+          </label>
+
+          <input
+            class="input"
+            id="ce"
+            value="${esc(u.email || '')}"
+            required
+            type="email"
+          >
+
+        </div>
+
+        <div>
+
+          <label class="label">
+            City
+          </label>
+
+          <input
+            class="input"
+            id="cc"
+            required
+          >
+
+        </div>
+
+        <div>
+
+          <label class="label">
+            Postal code
+          </label>
+
+          <input
+            class="input"
+            id="cz"
+          >
+
+        </div>
+
+        <div class="full">
+
+          <label class="label">
+            Complete delivery address
+          </label>
+
+          <textarea
+            id="ca"
+            rows="3"
+            required
+          ></textarea>
+
+        </div>
+
+        <div class="full">
+
+          <label class="label">
+            Delivery instructions (optional)
+          </label>
+
+          <textarea
+            id="ci"
+            rows="2"
+          ></textarea>
+
+        </div>
+
+      </div>
+
+      <div class="total">
+
+        <span>Total</span>
+
+        <span>
+          ${money(
+            cartTotal() +
+            Number(settings.delivery_fee || 0)
+          )}
+        </span>
+
+      </div>
+
+      <div class="notice">
+        Payment method: Cash on Delivery
+      </div>
+
+      <button
+        class="btn"
+        style="width:100%"
+      >
+        Place Order
+      </button>
+
+    </form>
+  `);
+}
+
+
+async function placeOrder(e) {
+
+  e.preventDefault();
+
+  const items =
+    cart.map(x => ({
+      product_id: x.id,
+      quantity: x.qty
+    }));
+
+  const { data, error } =
+    await sb.rpc(
+      'place_order',
+      {
+        p_customer_name:
+          document.getElementById('cn').value,
+
+        p_customer_phone:
+          document.getElementById('cp').value,
+
+        p_customer_email:
+          document.getElementById('ce').value,
+
+        p_delivery_address:
+          document.getElementById('ca').value,
+
+        p_city:
+          document.getElementById('cc').value,
+
+        p_postal_code:
+          document.getElementById('cz').value || '',
+
+        p_instructions:
+          document.getElementById('ci').value || '',
+
+        p_delivery_fee:
+          Number(settings.delivery_fee || 0),
+
+        p_items: items
+      }
+    );
+
+  if (error) {
+    return toast(error.message);
+  }
+
+  cart = [];
+
+  saveCart();
+
+  closeModal();
+
+  orderConfirmation(data);
+
+  try {
+
+    const { data: sessionData } =
+      await sb.auth.getSession();
+
+    const token =
+      sessionData.session?.access_token;
+
+    if (token) {
+
+      const response =
+        await fetch(
+          `${cfg.SUPABASE_URL}/functions/v1/send-order-notifications`,
+          {
+            method: 'POST',
+
+            headers: {
+              Authorization:
+                `Bearer ${token}`,
+
+              apikey:
+                cfg.SUPABASE_ANON_KEY,
+
+              'Content-Type':
+                'application/json'
+            },
+
+            body: JSON.stringify({
+              order_id: data.id
+            })
+          }
+        );
+
+      if (!response.ok) {
+
+        console.warn(
+          'Notification function returned:',
+          response.status
+        );
+
+      }
+
+    }
+
+  } catch (err) {
+
+    console.warn(
+      'Notification dispatch failed:',
+      err
+    );
+
+  }
+}
+
+
+/* =========================
+   ORDER CONFIRMATION
+========================= */
+
+function orderConfirmation(o) {
+
+  const msg =
+    encodeURIComponent(
+      `NEW ORDER ${o.order_number}
+Customer: ${o.customer_name}
+Phone: ${o.customer_phone}
+Address: ${o.delivery_address}, ${o.city}
+Total: ${money(o.total)}
+Payment: COD`
+    );
+
+  modal(`
+    <div style="text-align:center">
+
+      <div style="font-size:58px">
+        ✅
+      </div>
+
+      <h2>
+        Order placed!
+      </h2>
+
+      <p>
+        Your order
+        <b>${esc(o.order_number)}</b>
+        has been received.
+      </p>
+
+      <p style="color:#6b7280">
+        The real order is now stored in Supabase
+        and stock has been reduced atomically.
+      </p>
+
+      ${
+        settings.whatsapp
+          ? `
+            <a
+              class="btn"
+              style="
+                display:inline-block;
+                text-decoration:none
+              "
+              target="_blank"
+              href="https://wa.me/${encodeURIComponent(
+                settings.whatsapp
+              )}?text=${msg}"
+            >
+              Open WhatsApp
+            </a>
+          `
+          : ''
+      }
+
+      <br>
+      <br>
+
+      <button
+        class="btn ghost"
+        onclick="closeModal();home()"
+      >
+        Continue Shopping
+      </button>
+
+    </div>
+  `);
+}
+
+
+/* =========================
+   MY ORDERS
+========================= */
+
+async function myOrders() {
+
+  const u = await user();
+
+  if (!u) return;
+
+  const { data, error } =
+    await sb
+      .from('orders')
+      .select('*,order_items(*)')
+      .eq('user_id', u.id)
+      .order('created_at', {
+        ascending: false
+      });
+
+  if (error) {
+    return toast(error.message);
+  }
+
+  modal(`
+    <button
+      class="close"
+      onclick="closeModal()"
+    >
+      ×
+    </button>
+
+    <h2>My Orders</h2>
+
+    ${
+      data?.length
+        ? data.map(o => `
+            <div class="cartrow">
+
+              <div style="flex:1">
+
+                <b>
+                  ${esc(o.order_number)}
+                </b>
+
+                <div>
+                  ${new Date(
+                    o.created_at
+                  ).toLocaleString()}
+                </div>
+
+                <div>
+                  ${money(o.total)}
+                </div>
+
+              </div>
+
+              <span class="status">
+                ${esc(o.status)}
+              </span>
+
+            </div>
+          `).join('')
+        : `
+          <div class="empty">
+            No orders yet.
+          </div>
+        `
+    }
+  `);
+}
+
+
+/* =========================
+   ADMIN
+========================= */
+
+async function admin() {
+
+  const pr = await profile();
+
+  if (!pr || pr.role !== 'admin') {
+    return toast('Admin access required');
+  }
+
+  await adminRender();
+}
+
+
+async function adminRender() {
+
+  const [ps, os, cs] =
+    await Promise.all([
+
+      sb
+        .from('products')
+        .select('*,categories(name)')
+        .order('created_at', {
+          ascending: false
+        }),
+
+      sb
+        .from('orders')
+        .select('*,order_items(*)')
+        .order('created_at', {
+          ascending: false
+        }),
+
+      sb
+        .from('profiles')
+        .select('*')
+        .order('created_at', {
+          ascending: false
+        })
+
+    ]);
+
+  if (ps.error || os.error || cs.error) {
+
+    return toast(
+      ps.error?.message ||
+      os.error?.message ||
+      cs.error?.message
+    );
+  }
+
+  products = ps.data || [];
+
+  const orders =
+    os.data || [];
+
+  const customers =
+    cs.data || [];
+
+  app.innerHTML = `
+
+    <nav class="nav">
+
+      <button
+        class="brand"
+        onclick="home()"
+      >
+        ${esc(settings.store_name)}
+        <span>.</span>
+      </button>
+
+      <button
+        class="btn ghost"
+        onclick="home()"
+      >
+        Exit Admin
+      </button>
+
+    </nav>
+
+    <main class="container admin">
+
+      <h1>
+        Admin Dashboard
+      </h1>
+
+      <div class="adminnav">
+
+        ${
+          [
+            'dashboard',
+            'products',
+            'orders',
+            'customers',
+            'settings'
+          ]
+          .map(x => `
+            <button
+              class="${atab === x ? 'active' : ''}"
+              onclick="atab='${x}';adminRender()"
+            >
+              ${x[0].toUpperCase() + x.slice(1)}
+            </button>
+          `)
+          .join('')
+        }
+
+      </div>
+
+      ${adminContent(
+        orders,
+        customers
+      )}
+
+    </main>
+  `;
+}
+
+
+function adminContent(
+  orders,
+  customers
+) {
+
+  if (atab === 'dashboard') {
+
+    return `
+
+      <div class="cards">
+
+        <div class="stat">
+          Orders
+          <b>${orders.length}</b>
+        </div>
+
+        <div class="stat">
+          Customers
+          <b>
+            ${
+              customers.filter(
+                x => x.role === 'customer'
+              ).length
+            }
+          </b>
+        </div>
+
+        <div class="stat">
+          Products
+          <b>${products.length}</b>
+        </div>
+
+        <div class="stat">
+          Sales
+          <b>
+            ${money(
+              orders.reduce(
+                (a, o) =>
+                  a + Number(o.total),
+                0
+              )
+            )}
+          </b>
+        </div>
+
+      </div>
+
+      <section class="section">
+
+        <h2>
+          Recent Orders
+        </h2>
+
+        ${orderTable(
+          orders.slice(0, 10)
+        )}
+
+      </section>
+    `;
+  }
+
+
+  if (atab === 'products') {
+
+    return `
+
+      <div class="sectionhead">
+
+        <h2>
+          Products
+        </h2>
+
+        <button
+          class="btn"
+          onclick="addProduct()"
+        >
+          + Add Product
+        </button>
+
+      </div>
+
+      ${productTable()}
+    `;
+  }
+
+
+  if (atab === 'orders') {
+
+    return `
+      <h2>Orders</h2>
+      ${orderTable(orders)}
+    `;
+  }
+
+
+  if (atab === 'customers') {
+
+    return `
+
+      <h2>
+        Customers
+      </h2>
+
+      <div class="tablewrap">
+
+        <table class="table">
+
+          <tr>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Phone</th>
+            <th>Role</th>
+          </tr>
+
+          ${
+            customers
+              .filter(
+                u => u.role === 'customer'
+              )
+              .map(u => `
+                <tr>
+
+                  <td>
+                    ${esc(u.full_name)}
+                  </td>
+
+                  <td>
+                    ${esc(u.id)}
+                  </td>
+
+                  <td>
+                    ${esc(u.phone)}
+                  </td>
+
+                  <td>
+                    ${esc(u.role)}
+                  </td>
+
+                </tr>
+              `)
+              .join('')
+          }
+
+        </table>
+
+      </div>
+    `;
+  }
+
+
+  return `
+
+    <h2>
+      Store Settings
+    </h2>
+
+    <form
+      onsubmit="saveSettings(event)"
+      style="max-width:600px"
+    >
+
+      <label class="label">
+        Store name
+      </label>
+
+      <input
+        class="input"
+        id="stn"
+        value="${esc(settings.store_name)}"
+      >
+
+      <label class="label">
+        Admin email
+      </label>
+
+      <input
+        class="input"
+        id="ste"
+        value="${esc(settings.admin_email)}"
+        type="email"
+      >
+
+      <label class="label">
+        WhatsApp number (international, no +)
+      </label>
+
+      <input
+        class="input"
+        id="stw"
+        value="${esc(settings.whatsapp)}"
+      >
+
+      <label class="label">
+        Delivery fee
+      </label>
+
+      <input
+        class="input"
+        id="std"
+        value="${settings.delivery_fee}"
+        type="number"
+      >
+
+      <button
+        class="btn"
+        style="margin-top:14px"
+      >
+        Save Settings
+      </button>
+
+    </form>
+  `;
+}
+
+
+/* =========================
+   PRODUCT TABLE
+========================= */
+
+function productTable() {
+
+  return `
+
+    <div class="tablewrap">
+
+      <table class="table">
+
+        <tr>
+          <th>Product</th>
+          <th>Price</th>
+          <th>Stock</th>
+          <th>Category</th>
+          <th>Action</th>
+        </tr>
+
+        ${
+          products.map(p => `
+
+            <tr>
+
+              <td>
+                ${esc(p.name)}
+              </td>
+
+              <td>
+                ${money(p.price)}
+              </td>
+
+              <td>
+                ${p.stock}
+              </td>
+
+              <td>
+                ${esc(
+                  p.categories?.name || ''
+                )}
+              </td>
+
+              <td>
+
+                <button
+                  onclick="editProduct('${p.id}')"
+                >
+                  Edit
+                </button>
+
+                <button
+                  onclick="deleteProduct('${p.id}')"
+                  style="color:#dc2626"
+                >
+                  Delete
+                </button>
+
+              </td>
+
+            </tr>
+
+          `).join('')
+        }
+
+      </table>
+
+    </div>
+  `;
+}
+
+
+/* =========================
+   ORDER TABLE
+========================= */
+
+function orderTable(os) {
+
+  return `
+
+    <div class="tablewrap">
+
+      <table class="table">
+
+        <tr>
+
+          <th>Order</th>
+          <th>Customer</th>
+          <th>Total</th>
+          <th>Status</th>
+          <th>Action</th>
+
+        </tr>
+
+        ${
+          os.map(o => `
+
+            <tr>
+
+              <td>
+                ${esc(o.order_number)}
+              </td>
+
+              <td>
+                ${esc(o.customer_name)}
+              </td>
+
+              <td>
+                ${money(o.total)}
+              </td>
+
+              <td>
+
+                <span class="status">
+                  ${esc(o.status)}
+                </span>
+
+              </td>
+
+              <td>
+
+                <select
+                  onchange="setStatus('${o.id}',this.value)"
+                >
+
+                  ${
+                    [
+                      'pending',
+                      'confirmed',
+                      'processing',
+                      'shipped',
+                      'delivered',
+                      'cancelled'
+                    ]
+                    .map(s => `
+                      <option
+                        ${s === o.status ? 'selected' : ''}
+                      >
+                        ${s}
+                      </option>
+                    `)
+                    .join('')
+                  }
+
+                </select>
+
+              </td>
+
+            </tr>
+
+          `).join('')
+        }
+
+      </table>
+
+    </div>
+  `;
+}
+
+
+/* =========================
+   ORDER STATUS
+========================= */
+
+async function setStatus(
+  id,
+  status
+) {
+
+  const { data: old } =
+    await sb
+      .from('orders')
+      .select('status')
+      .eq('id', id)
+      .single();
+
+  const { error } =
+    await sb
+      .from('orders')
+      .update({
+        status
+      })
+      .eq('id', id);
+
+  if (error) {
+    return toast(error.message);
+  }
+
+  const u = await user();
+
+  await sb
+    .from('order_status_history')
+    .insert({
+      order_id: id,
+      old_status: old?.status,
+      new_status: status,
+      changed_by: u?.id
+    });
+
+  toast('Order updated');
+
+  adminRender();
+}
+
+
+/* =========================
+   ADD / EDIT PRODUCT
+========================= */
+
+function addProduct() {
+
+  modal(`
+    <button
+      class="close"
+      onclick="closeModal()"
+    >
+      ×
+    </button>
+
+    <h2>
+      Add Product
+    </h2>
+
+    ${productForm()}
+  `);
+}
+
+
+function editProduct(id) {
+
+  const p =
+    products.find(x => x.id === id);
+
+  if (!p) {
+    return toast('Product not found');
+  }
+
+  modal(`
+    <button
+      class="close"
+      onclick="closeModal()"
+    >
+      ×
+    </button>
+
+    <h2>
+      Edit Product
+    </h2>
+
+    ${productForm(p)}
+  `);
+}
+
+
+/* =========================
+   PRODUCT FORM
+========================= */
+
+function productForm(p = {}) {
+
+  return `
+
+    <form
+      onsubmit="saveProduct(event,'${p.id || ''}')"
+    >
+
+      <div class="formgrid">
+
+        <div class="full">
+
+          <label class="label">
+            Name
+          </label>
+
+          <input
+            class="input"
+            id="pn"
+            value="${esc(p.name || '')}"
+            required
+          >
+
+        </div>
+
+
+        <div>
+
+          <label class="label">
+            Price
+          </label>
+
+          <input
+            class="input"
+            id="pp"
+            type="number"
+            step="0.01"
+            value="${p.price ?? ''}"
+            required
+          >
+
+        </div>
+
+
+        <div>
+
+          <label class="label">
+            Old price
+          </label>
+
+          <input
+            class="input"
+            id="po"
+            type="number"
+            step="0.01"
+            value="${p.old_price ?? ''}"
+          >
+
+        </div>
+
+
+        <div>
+
+          <label class="label">
+            Stock
+          </label>
+
+          <input
+            class="input"
+            id="ps"
+            type="number"
+            min="0"
+            value="${p.stock ?? 0}"
+            required
+          >
+
+        </div>
+
+
+        <div>
+
+          <label class="label">
+            Category
+          </label>
+
+          <select
+            class="select"
+            id="pc"
+          >
+
+            ${
+              categories.map(c => `
+                <option
+                  value="${c.id}"
+                  ${p.category_id === c.id ? 'selected' : ''}
+                >
+                  ${esc(c.name)}
+                </option>
+              `).join('')
+            }
+
+          </select>
+
+        </div>
+
+
+        <div>
+
+          <label class="label">
+            SKU
+          </label>
+
+          <input
+            class="input"
+            id="pk"
+            value="${esc(p.sku || '')}"
+          >
+
+        </div>
+
+
+        <div class="full">
+
+          <label class="label">
+            Product Image
+          </label>
+
+          <input
+            class="input"
+            id="pi"
+            type="file"
+            accept="image/*"
+          >
+
+          ${
+            p.image_url
+              ? `
+                <img
+                  src="${esc(p.image_url)}"
+                  alt="Current image"
+                  style="
+                    width:120px;
+                    height:120px;
+                    object-fit:cover;
+                    border-radius:12px;
+                    margin-top:10px
+                  "
+                >
+              `
+              : ''
+          }
+
+          ${
+            p.image_url
+              ? `
+                <small style="
+                  display:block;
+                  color:#6b7280;
+                  margin-top:6px
+                ">
+                  Leave empty to keep the current image.
+                </small>
+              `
+              : ''
+          }
+
+        </div>
+
+
+        <div class="full">
+
+          <label class="label">
+            Description
+          </label>
+
+          <textarea
+            id="pd"
+            rows="3"
+          >${esc(p.description || '')}</textarea>
+
+        </div>
+
+      </div>
+
+
+      <button
+        class="btn"
+        style="margin-top:14px"
+      >
+        Save Product
+      </button>
+
+    </form>
+  `;
+}
+
+
+/* =========================
+   SAVE PRODUCT
+========================= */
+
+async function saveProduct(
+  e,
+  id
+) {
+
+  e.preventDefault();
+
+  const imageInput =
+    document.getElementById('pi');
+
+  const imageFile =
+    imageInput?.files?.[0] || null;
+
+  let imageUrl = null;
+
+
+  /*
+   * If editing an existing product and
+   * no new image is selected, keep old image.
+   */
+
+  if (id) {
+
+    const existing =
+      products.find(p => p.id === id);
+
+    imageUrl =
+      existing?.image_url || null;
+  }
+
+
+  /*
+   * Upload new image if selected.
+   */
+
+  if (imageFile) {
+
+    const fileExt =
+      imageFile.name
+        .split('.')
+        .pop()
+        .toLowerCase();
+
+    const fileName =
+      `${crypto.randomUUID()}.${fileExt}`;
+
+
+    const {
+      error: uploadError
+    } = await sb.storage
+      .from('products')
+      .upload(
+        fileName,
+        imageFile,
+        {
+          cacheControl: '3600',
+          upsert: false
+        }
+      );
+
+
+    if (uploadError) {
+
+      return toast(
+        'Image upload failed: ' +
+        uploadError.message
+      );
+    }
+
+
+    const {
+      data: publicUrlData
+    } = sb.storage
+      .from('products')
+      .getPublicUrl(fileName);
+
+
+    imageUrl =
+      publicUrlData?.publicUrl || null;
+  }
+
+
+  const name =
+    document.getElementById('pn')
+      .value
+      .trim();
+
+
+  const slug =
+    name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '') +
+    (id ? '' : '-' + Date.now());
+
+
+  const payload = {
+
+    name,
+
+    slug,
+
+    price:
+      Number(
+        document.getElementById('pp').value
+      ),
+
+    old_price:
+      Number(
+        document.getElementById('po').value
+      ) || null,
+
+    stock:
+      Number(
+        document.getElementById('ps').value
+      ),
+
+    category_id:
+      document.getElementById('pc').value,
+
+    sku:
+      document.getElementById('pk')
+        .value
+        .trim() || null,
+
+    image_url:
+      imageUrl,
+
+    description:
+      document.getElementById('pd')
+        .value
+        .trim(),
+
+    active: true
+  };
+
+
+  let result;
+
+
+  if (id) {
+
+    result =
+      await sb
+        .from('products')
+        .update(payload)
+        .eq('id', id);
+
+  } else {
+
+    result =
+      await sb
+        .from('products')
+        .insert(payload);
+
+  }
+
+
+  if (result.error) {
+
+    return toast(
+      result.error.message
+    );
+  }
+
+
+  closeModal();
+
+  toast('Product saved');
+
+  await adminRender();
+}
+
+
+/* =========================
+   DELETE PRODUCT
+========================= */
+
+async function deleteProduct(id) {
+
+  if (
+    !confirm(
+      'Delete this product?'
+    )
+  ) {
+    return;
+  }
+
+  const { error } =
+    await sb
+      .from('products')
+      .update({
+        active: false
+      })
+      .eq('id', id);
+
+  if (error) {
+    return toast(error.message);
+  }
+
+  toast('Product archived');
+
+  adminRender();
+}
+
+
+/* =========================
+   STORE SETTINGS
+========================= */
+
+async function saveSettings(e) {
+
+  e.preventDefault();
+
+  const storeName =
+    document.getElementById('stn').value;
+
+  const adminEmail =
+    document.getElementById('ste').value;
+
+  const whatsapp =
+    document.getElementById('stw').value;
+
+  const deliveryFee =
+    Number(
+      document.getElementById('std').value
+    );
+
+
+  const { error } =
+    await sb
+      .from('store_settings')
+      .update({
+
+        store_name:
+          storeName,
+
+        admin_email:
+          adminEmail,
+
+        whatsapp:
+          whatsapp,
+
+        delivery_fee:
+          deliveryFee
+
+      })
+      .eq('id', true);
+
+
+  if (error) {
+    return toast(error.message);
+  }
+
+
+  settings = {
+    ...settings,
+
+    store_name:
+      storeName,
+
+    admin_email:
+      adminEmail,
+
+    whatsapp:
+      whatsapp,
+
+    delivery_fee:
+      deliveryFee
+  };
+
+
+  toast('Settings saved');
+
+  adminRender();
+}
+
+
+/* =========================
+   FOOTER
+========================= */
+
+function footer() {
+
+  return `
+
+    <footer class="footer">
+
+      <div class="container">
+
+        <strong>
+          ${esc(settings.store_name)}
+        </strong>
+
+        <p>
+          Modern shopping, made simple.
+        </p>
+
+        <p>
+
+          <a
+            href="/privacy.html"
+            style="color:#cbd5e1"
+          >
+            Privacy
+          </a>
+
+          ·
+
+          <a
+            href="/terms.html"
+            style="color:#cbd5e1"
+          >
+            Terms
+          </a>
+
+          ·
+
+          <a
+            href="/shipping-returns.html"
+            style="color:#cbd5e1"
+          >
+            Shipping & Returns
+          </a>
+
+        </p>
+
+        <small>
+          © ${new Date().getFullYear()}
+          ${esc(settings.store_name)}.
+          All rights reserved.
+        </small>
+
+      </div>
+
+    </footer>
+  `;
+}
+
+
+/* =========================
+   MODAL
+========================= */
+
+function modal(html) {
+
+  closeModal();
+
+  const m =
+    document.createElement('div');
+
+  m.className = 'modal';
+
+  m.id = 'modal';
+
+  m.innerHTML = `
+    <div class="panel">
+      ${html}
+    </div>
+  `;
+
+  document.body.appendChild(m);
+}
+
+
+function closeModal() {
+
+  document
+    .getElementById('modal')
+    ?.remove();
+}
+
+
+/* =========================
+   TOAST
+========================= */
+
+function toast(t) {
+
+  const x =
+    document.createElement('div');
+
+  x.style = `
+    position:fixed;
+    bottom:22px;
+    left:50%;
+    transform:translateX(-50%);
+    background:#111827;
+    color:#fff;
+    padding:12px 18px;
+    border-radius:10px;
+    z-index:50;
+    font-weight:700;
+    max-width:90vw;
+  `;
+
+  x.textContent = t;
+
+  document.body.appendChild(x);
+
+  setTimeout(
+    () => x.remove(),
+    2600
+  );
+}
+
+
+/* =========================
+   AUTH STATE
+========================= */
+
+if (sb) {
+
+  sb.auth.onAuthStateChange(
+    () => {}
+  );
+
+}
+
+
+/* =========================
+   START
+========================= */
+
 loadBase();
+```
